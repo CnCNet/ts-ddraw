@@ -116,14 +116,26 @@ static HRESULT __stdcall _CreateSurface(IDirectDrawImpl *this, LPDDSURFACEDESC l
 
 static HRESULT __stdcall _DuplicateSurface(IDirectDrawImpl *this, LPDIRECTDRAWSURFACE src, LPDIRECTDRAWSURFACE *dest)
 {
-    HRESULT ret = IDirectDraw_DuplicateSurface(this->real, src, dest);
+    HRESULT ret = DDERR_UNSUPPORTED;
+
+    if (PROXY)
+    {
+        ret = IDirectDraw_DuplicateSurface(this->real, src, dest);
+    }
+
     dprintf("IDirectDraw::DuplicateSurface(this=%p, src=%p, dest=%p) -> %08X\n", this, src, dest, (int)ret);
     return ret;
 }
 
 static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags, LPDDSURFACEDESC lpDDSurfaceDesc, LPVOID lpContext, LPDDENUMMODESCALLBACK lpEnumModesCallback)
 {
-    HRESULT ret = IDirectDraw_EnumDisplayModes(this->real, dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback);
+    HRESULT ret = DDERR_UNSUPPORTED;
+
+    if (PROXY)
+    {
+        ret = IDirectDraw_EnumDisplayModes(this->real, dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback);
+    }
+
     dprintf("IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p) -> %08X\n", this, (int)dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback, (int)ret);
     return ret;
 }
@@ -317,7 +329,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             ret = DDERR_UNSUPPORTED;
         }
 
-        SetWindowPos(this->hWnd, HWND_BOTTOM, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
+        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
 
         DEVMODE mode;
         memset(&mode, 0, sizeof(mode));

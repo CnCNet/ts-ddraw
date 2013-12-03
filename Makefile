@@ -1,6 +1,6 @@
 CC=i686-w64-mingw32-gcc
 WINDRES=i686-w64-mingw32-windres
-CFLAGS=--std=c99 -Wall -Wl,--enable-stdcall-fixup -O6
+CFLAGS=--std=c99 -Wall -Wl,--enable-stdcall-fixup -O6 -D_DEBUG
 LIBS=-lgdi32
 
 all:
