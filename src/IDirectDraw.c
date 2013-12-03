@@ -16,6 +16,7 @@
 
 #include "main.h"
 #include "IDirectDraw.h"
+#include "IDirectDrawClipper.h"
 
 static IDirectDrawImplVtbl Vtbl;
 
@@ -65,8 +66,16 @@ static HRESULT __stdcall _CreatePalette(IDirectDrawImpl *this, DWORD dwFlags, LP
 
 static HRESULT __stdcall _CreateClipper(IDirectDrawImpl *this, DWORD dwFlags, LPDIRECTDRAWCLIPPER FAR *lplpDDClipper, IUnknown FAR *pUnkOuter)
 {
-    HRESULT ret = IDirectDraw_CreateClipper(this->real, dwFlags, lplpDDClipper, pUnkOuter);
-    dprintf("IDirectDraw::CreateClipper(this=%p, dwFlags=%d, DDClipper=%p, unkOuter=%p) -> %08X\n", this, (int)dwFlags, lplpDDClipper, pUnkOuter, (int)ret);
+    HRESULT ret = DD_OK;
+    IDirectDrawClipperImpl *impl = IDirectDrawClipperImpl_construct();
+    *lplpDDClipper = (IDirectDrawClipper *)impl;
+
+    if (PROXY)
+    {
+        ret = IDirectDraw_CreateClipper(this->real, dwFlags, &impl->real, pUnkOuter);
+    }
+
+    dprintf("IDirectDraw::CreateClipper(this=%p, dwFlags=%d, lplpDDClipper=%p, unkOuter=%p) -> %08X\n", this, (int)dwFlags, lplpDDClipper, pUnkOuter, (int)ret);
     return ret;
 }
 
