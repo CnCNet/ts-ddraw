@@ -17,6 +17,7 @@
 #include "main.h"
 #include "IDirectDraw.h"
 
+#ifdef _DEBUG
 int PROXY = 0;
 int VERBOSE = 1;
 int SYNC = 0;
@@ -24,11 +25,13 @@ int TRACE = 0;
 
 static HANDLE real_dll = NULL;
 static HRESULT WINAPI (*real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*) = NULL;
+#endif
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter) 
 {
     dprintf("DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
 
+#ifdef _DEBUG
     char buf[32];
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_PROXY", buf, sizeof buf);
@@ -42,9 +45,11 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_TRACE", buf, sizeof buf);
     if (buf[0]) TRACE = 1;
+#endif
 
     IDirectDrawImpl *ddraw = IDirectDrawImpl_construct();
 
+#ifdef _DEBUG
     if (PROXY)
     {
         real_dll = LoadLibrary("system32\\ddraw.dll");
@@ -57,6 +62,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     {
         dprintf("\n\n");
     }
+#endif
 
     *lplpDD = (IDirectDraw *)ddraw;
     dprintf(" lplpDD = %p\n", *lplpDD);
@@ -64,6 +70,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     return DD_OK;
 }
 
+#ifdef _DEBUG
 int dprintf(const char *fmt, ...)
 {
     va_list args;
@@ -78,6 +85,7 @@ int dprintf(const char *fmt, ...)
     va_end(args);
     return ret;
 }
+#endif
 
 void dump_dwcaps(DWORD dwCaps)
 {

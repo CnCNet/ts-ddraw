@@ -20,19 +20,33 @@
 #ifndef _MAIN_
 #define _MAIN_
 
-#include <stdio.h>
-int dprintf(const char *, ...);
+#ifdef _DEBUG
 
-extern int PROXY;
-extern int VERBOSE;
-extern int SYNC;
+    #include <stdio.h>
+    int dprintf(const char *, ...);
+    #define ENTER if (SYNC) EnterCriticalSection(&this->dd->cs)
+    #define LEAVE if (SYNC) { LeaveCriticalSection(&this->dd->cs); } fflush(stdout)
+
+    extern int PROXY;
+    extern int VERBOSE;
+    extern int SYNC;
+
+#else
+
+    #define dprintf(...)
+    #define ENTER
+    #define LEAVE 
+
+    #define PROXY 0
+    #define VERBOSE 0
+    #define SYNC 0
+
+#endif
+
 
 void dump_ddcaps(LPDDCAPS);
 void dump_ddsurfacedesc(LPDDSURFACEDESC);
 void dump_ddpixelformat(LPDDPIXELFORMAT);
 void dump_ddbltfx(LPDDBLTFX);
-
-#define ENTER if (SYNC) EnterCriticalSection(&this->dd->cs)
-#define LEAVE if (SYNC) { LeaveCriticalSection(&this->dd->cs); } fflush(stdout)
 
 #endif

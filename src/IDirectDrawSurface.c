@@ -151,7 +151,7 @@ static HRESULT __stdcall _QueryInterface(IDirectDrawSurfaceImpl *this, REFIID ri
 
 static ULONG __stdcall _AddRef(IDirectDrawSurfaceImpl *this)
 {
-    printf("IDirectDrawSurface::AddRef(this=%p)\n", this);
+    dprintf("IDirectDrawSurface::AddRef(this=%p)\n", this);
     return this->ref;
 }
 
@@ -199,13 +199,13 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
 
 HRESULT __stdcall _AddAttachedSurface(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWSURFACE lpDDSurface)
 {
-    printf("IDirectDrawSurface::AddAttachedSurface(this=%p, lpDDSurface=%p)\n", this, lpDDSurface);
+    dprintf("IDirectDrawSurface::AddAttachedSurface(this=%p, lpDDSurface=%p)\n", this, lpDDSurface);
     return DD_OK;
 }
 
 HRESULT __stdcall _AddOverlayDirtyRect(IDirectDrawSurfaceImpl *this, LPRECT a)
 {
-    printf("IDirectDrawSurface::AddOverlayDirtyRect(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::AddOverlayDirtyRect(this=%p, ...)\n", this);
     return DD_OK;
 }
 
@@ -271,19 +271,19 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
 HRESULT __stdcall _BltBatch(IDirectDrawSurfaceImpl *this, LPDDBLTBATCH a, DWORD b, DWORD c)
 {
-    printf("IDirectDrawSurface::BltBatch(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::BltBatch(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _BltFast(IDirectDrawSurfaceImpl *this, DWORD a, DWORD b, LPDIRECTDRAWSURFACE c, LPRECT d, DWORD e)
 {
-    printf("IDirectDrawSurface::BltFast(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::BltFast(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _DeleteAttachedSurface(IDirectDrawSurfaceImpl *this, DWORD dwFlags, LPDIRECTDRAWSURFACE lpDDSurface)
 {
-    printf("IDirectDrawSurface::DeleteAttachedSurface(this=%p, dwFlags=%d, lpDDSurface=%p)\n", this, (int)dwFlags, lpDDSurface);
+    dprintf("IDirectDrawSurface::DeleteAttachedSurface(this=%p, dwFlags=%d, lpDDSurface=%p)\n", this, (int)dwFlags, lpDDSurface);
     return DD_OK;
 }
 
@@ -322,25 +322,25 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
 
 HRESULT __stdcall _EnumAttachedSurfaces(IDirectDrawSurfaceImpl *this, LPVOID lpContext, LPDDENUMSURFACESCALLBACK lpEnumSurfacesCallback)
 {
-    printf("IDirectDrawSurface::EnumAttachedSurfaces(this=%p, lpContext=%p, lpEnumSurfacesCallback=%p)\n", this, lpContext, lpEnumSurfacesCallback);
+    dprintf("IDirectDrawSurface::EnumAttachedSurfaces(this=%p, lpContext=%p, lpEnumSurfacesCallback=%p)\n", this, lpContext, lpEnumSurfacesCallback);
     return DD_OK;
 }
 
 HRESULT __stdcall _EnumOverlayZOrders(IDirectDrawSurfaceImpl *this, DWORD a, LPVOID b, LPDDENUMSURFACESCALLBACK c)
 {
-    printf("IDirectDrawSurface::EnumOverlayZOrders(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::EnumOverlayZOrders(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _Flip(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWSURFACE a, DWORD b)
 {
-    printf("IDirectDrawSurface::Flip(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::Flip(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _GetAttachedSurface(IDirectDrawSurfaceImpl *this, LPDDSCAPS a, LPDIRECTDRAWSURFACE FAR *b)
 {
-    printf("IDirectDrawSurface::GetAttachedSurface(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::GetAttachedSurface(this=%p, ...)\n", this);
     return DD_OK;
 }
 
@@ -364,19 +364,19 @@ static HRESULT __stdcall _GetBltStatus(IDirectDrawSurfaceImpl *this, DWORD dwFla
 
 HRESULT __stdcall _GetCaps(IDirectDrawSurfaceImpl *this, LPDDSCAPS lpDDSCaps)
 {
-    printf("IDirectDrawSurface::GetCaps(this=%p, lpDDSCaps=%p)\n", this, lpDDSCaps);
+    dprintf("IDirectDrawSurface::GetCaps(this=%p, lpDDSCaps=%p)\n", this, lpDDSCaps);
     return DD_OK;
 }
 
 HRESULT __stdcall _GetClipper(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWCLIPPER FAR *a)
 {
-    printf("IDirectDrawSurface::GetClipper(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::GetClipper(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _GetColorKey(IDirectDrawSurfaceImpl *this, DWORD a, LPDDCOLORKEY b)
 {
-    printf("IDirectDrawSurface::GetColorKey(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::GetColorKey(this=%p, ...)\n", this);
     return DD_OK;
 }
 
@@ -395,31 +395,31 @@ HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
 
 HRESULT __stdcall _GetFlipStatus(IDirectDrawSurfaceImpl *this, DWORD a)
 {
-    printf("IDirectDrawSurface::GetFlipStatus(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::GetFlipStatus(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _GetOverlayPosition(IDirectDrawSurfaceImpl *this, LPLONG a, LPLONG b)
 {
-    printf("IDirectDrawSurface::GetOverlayPosition(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::GetOverlayPosition(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _GetPalette(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWPALETTE FAR *lplpDDPalette)
 {
-    printf("IDirectDrawSurface::GetPalette(this=%p, lplpDDPalette=%p)\n", this, lplpDDPalette);
+    dprintf("IDirectDrawSurface::GetPalette(this=%p, lplpDDPalette=%p)\n", this, lplpDDPalette);
     return DD_OK;
 }
 
 HRESULT __stdcall _GetPixelFormat(IDirectDrawSurfaceImpl *this, LPDDPIXELFORMAT a)
 {
-    printf("IDirectDrawSurface::GetPixelFormat(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::GetPixelFormat(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _Initialize(IDirectDrawSurfaceImpl *this, LPDIRECTDRAW a, LPDDSURFACEDESC b)
 {
-    printf("IDirectDrawSurface::Initialize(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::Initialize(this=%p, ...)\n", this);
     return DD_OK;
 }
 
@@ -498,7 +498,7 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
 HRESULT __stdcall _Restore(IDirectDrawSurfaceImpl *this)
 {
     ENTER;
-    printf("IDirectDrawSurface::Restore(this=%p)\n", this);
+    dprintf("IDirectDrawSurface::Restore(this=%p)\n", this);
     LEAVE;
     return DD_OK;
 }
@@ -521,19 +521,19 @@ static HRESULT __stdcall _SetClipper(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWC
 
 HRESULT __stdcall _SetColorKey(IDirectDrawSurfaceImpl *this, DWORD a, LPDDCOLORKEY b)
 {
-    printf("IDirectDrawSurface::SetColorKey(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::SetColorKey(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _SetOverlayPosition(IDirectDrawSurfaceImpl *this, LONG a, LONG b)
 {
-    printf("IDirectDrawSurface::SetOverlayPosition(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::SetOverlayPosition(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _SetPalette(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWPALETTE lpDDPalette)
 {
-    printf("IDirectDrawSurface::SetPalette(this=%p, lpDDPalette=%p)\n", this, lpDDPalette);
+    dprintf("IDirectDrawSurface::SetPalette(this=%p, lpDDPalette=%p)\n", this, lpDDPalette);
     return DD_OK;
 }
 
@@ -557,24 +557,24 @@ static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
 
     dprintf("IDirectDrawSurface::Unlock(this=%p, lpRect=%p) -> %08X\n", this, lpRect, (int)ret);
     LEAVE;
-    return DD_OK;
+    return ret;
 }
 
 HRESULT __stdcall _UpdateOverlay(IDirectDrawSurfaceImpl *this, LPRECT a, LPDIRECTDRAWSURFACE b, LPRECT c, DWORD d, LPDDOVERLAYFX e)
 {
-    printf("IDirectDrawSurface::UpdateOverlay(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::UpdateOverlay(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _UpdateOverlayDisplay(IDirectDrawSurfaceImpl *this, DWORD a)
 {
-    printf("IDirectDrawSurface::UpdateOverlayDisplay(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::UpdateOverlayDisplay(this=%p, ...)\n", this);
     return DD_OK;
 }
 
 HRESULT __stdcall _UpdateOverlayZOrder(IDirectDrawSurfaceImpl *this, DWORD a, LPDIRECTDRAWSURFACE b)
 {
-    printf("IDirectDrawSurface::UpdateOverlayZOrder(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::UpdateOverlayZOrder(this=%p, ...)\n", this);
     return DD_OK;
 }
 
