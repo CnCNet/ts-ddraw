@@ -160,13 +160,17 @@ static HRESULT __stdcall _GetCaps(IDirectDrawImpl *this, LPDDCAPS lpDDDriverCaps
             lpDDDriverCaps->dwPalCaps = DDPCAPS_8BIT|DDPCAPS_PRIMARYSURFACE;
             lpDDDriverCaps->dwVidMemTotal = 16777216;
             lpDDDriverCaps->dwVidMemFree = 16777216;
-            lpDDDriverCaps->dwMaxVisibleOverlays = 0;
-            lpDDDriverCaps->dwCurrVisibleOverlays = 0;
-            lpDDDriverCaps->dwNumFourCCCodes = 0;
+            lpDDDriverCaps->dwMaxVisibleOverlays = 0xFFFFFFFF;
+            lpDDDriverCaps->dwCurrVisibleOverlays = 0xFFFFFFFF;
+            lpDDDriverCaps->dwNumFourCCCodes = 0xFFFFFFFF;
             lpDDDriverCaps->dwAlignBoundarySrc = 0;
             lpDDDriverCaps->dwAlignSizeSrc = 0;
             lpDDDriverCaps->dwAlignBoundaryDest = 0;
             lpDDDriverCaps->dwAlignSizeDest = 0;
+
+            lpDDDriverCaps->dwSize = 316;
+            lpDDDriverCaps->dwCaps = 0xF5408669;
+            lpDDDriverCaps->dwCaps2 = 0x000A1801;
         }
 
         if (lpDDEmulCaps)
@@ -230,21 +234,39 @@ static HRESULT __stdcall _GetScanLine(IDirectDrawImpl *this, LPDWORD lpdwScanLin
 
 static HRESULT __stdcall _GetVerticalBlankStatus(IDirectDrawImpl *this, LPBOOL lpbIsInVB)
 {
-    HRESULT ret = IDirectDraw_GetVerticalBlankStatus(this->real, lpbIsInVB);
+    HRESULT ret = DDERR_UNSUPPORTED;
+
+    if (PROXY)
+    {
+        ret = IDirectDraw_GetVerticalBlankStatus(this->real, lpbIsInVB);
+    }
+
     dprintf("IDirectDraw::GetVerticalBlankStatus(this=%p, lpbIsInVB=%s) -> %08X\n", this, (lpbIsInVB ? "TRUE" : "FALSE"), (int)ret);
     return ret;
 }
 
 static HRESULT __stdcall _Initialize(IDirectDrawImpl *this, GUID *lpGUID)
 {
-    HRESULT ret = IDirectDraw_Initialize(this->real, lpGUID);
+    HRESULT ret = DDERR_UNSUPPORTED;
+
+    if (PROXY)
+    {
+        ret = IDirectDraw_Initialize(this->real, lpGUID);
+    }
+
     dprintf("IDirectDraw::Initialize(this=%p, lpGUID=%p) -> %08X\n", this, lpGUID, (int)ret);
     return ret;
 }
 
 static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
 {
-    HRESULT ret = IDirectDraw_RestoreDisplayMode(this->real);
+    HRESULT ret = DDERR_UNSUPPORTED;
+
+    if (PROXY)
+    {
+        ret = IDirectDraw_RestoreDisplayMode(this->real);
+    }
+
     dprintf("IDirectDraw::RestoreDisplayMode(this=%p) -> %08X\n", this, (int)ret);
     return ret;
 }
@@ -282,7 +304,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             ret = DDERR_UNSUPPORTED;
         }
 
-        SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
+        SetWindowPos(this->hWnd, HWND_BOTTOM, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
 
         DEVMODE mode;
         memset(&mode, 0, sizeof(mode));

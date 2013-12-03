@@ -39,7 +39,7 @@ struct IDirectDrawSurfaceImpl
     DWORD dwFlags;
     DWORD dwCaps;
 
-    void *surface;
+    unsigned short *surface;
     DDSURFACEDESC desc;
     PBITMAPINFO bmi;
     HBITMAP bitmap;

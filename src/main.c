@@ -20,6 +20,7 @@
 int PROXY = 0;
 int VERBOSE = 1;
 int SYNC = 0;
+int TRACE = 0;
 
 static HANDLE real_dll = NULL;
 static HRESULT WINAPI (*real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*) = NULL;
@@ -37,7 +38,10 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     if (buf[0]) VERBOSE = 0;
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_SYNC", buf, sizeof buf);
-    if (buf[0]) SYNC = 0;
+    if (buf[0]) SYNC = 1;
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_TRACE", buf, sizeof buf);
+    if (buf[0]) TRACE = 1;
 
     IDirectDrawImpl *ddraw = IDirectDrawImpl_construct();
 
@@ -49,11 +53,30 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         dprintf(" real_DirectDrawCreate = %p\n", real_DirectDrawCreate);
         real_DirectDrawCreate(lpGUID, &ddraw->real, pUnkOuter);
     }
+    else
+    {
+        dprintf("\n\n");
+    }
 
     *lplpDD = (IDirectDraw *)ddraw;
     dprintf(" lplpDD = %p\n", *lplpDD);
 
     return DD_OK;
+}
+
+int dprintf(const char *fmt, ...)
+{
+    va_list args;
+    int ret;
+
+    if (!TRACE) return 0;
+
+    fprintf(stdout, "[%08X] ", (int)GetCurrentThread());
+
+    va_start(args, fmt);
+    ret = vfprintf(stdout, fmt, args);
+    va_end(args);
+    return ret;
 }
 
 void dump_dwcaps(DWORD dwCaps)
@@ -181,24 +204,48 @@ void dump_ddsurfacedesc(LPDDSURFACEDESC lpDDSurfaceDesc)
         dprintf("            DDSD_XPITCH\n");
 #endif
 
-    if (lpDDSurfaceDesc->dwFlags & DDSD_WIDTH)
+    //if (lpDDSurfaceDesc->dwFlags & DDSD_WIDTH)
         dprintf("        dwWidth            = %d\n", (int)lpDDSurfaceDesc->dwWidth);
 
-    if (lpDDSurfaceDesc->dwFlags & DDSD_HEIGHT)
+    //if (lpDDSurfaceDesc->dwFlags & DDSD_HEIGHT)
         dprintf("        dwHeight           = %d\n", (int)lpDDSurfaceDesc->dwHeight);
 
-    if (lpDDSurfaceDesc->dwFlags & DDSD_PITCH)
+    //if (lpDDSurfaceDesc->dwFlags & DDSD_PITCH)
         dprintf("        lPitch             = %d\n", (int)lpDDSurfaceDesc->lPitch);
 
-    if (lpDDSurfaceDesc->dwFlags & DDSD_BACKBUFFERCOUNT )
+    //if (lpDDSurfaceDesc->dwFlags & DDSD_BACKBUFFERCOUNT )
         dprintf("        dwBackBufferCount  = %d\n", (int)lpDDSurfaceDesc->lPitch);
 
-    if (lpDDSurfaceDesc->dwFlags & DDSD_REFRESHRATE)
+    //if (lpDDSurfaceDesc->dwFlags & DDSD_REFRESHRATE)
         dprintf("        dwRefreshRate      = %d\n", (int)lpDDSurfaceDesc->dwRefreshRate);
 
-    if (lpDDSurfaceDesc->dwFlags & DDSD_LPSURFACE)
+    //if (lpDDSurfaceDesc->dwFlags & DDSD_LPSURFACE)
         dprintf("        lpSurface          = %p\n", lpDDSurfaceDesc->lpSurface);
 
-    if (lpDDSurfaceDesc->dwFlags & DDSD_CAPS)
+    //if (lpDDSurfaceDesc->dwFlags & DDSD_CAPS)
         dump_ddscaps(&lpDDSurfaceDesc->ddsCaps);
+
+    dump_ddpixelformat(&lpDDSurfaceDesc->ddpfPixelFormat);
+}
+
+void dump_ddpixelformat(LPDDPIXELFORMAT pfd)
+{
+    dprintf("       pfd->dwSize             = %d\n", (int)pfd->dwSize);
+    dprintf("       pfd->dwFlags            = %08X\n", (int)pfd->dwFlags);
+    dprintf("       pfd->dwFourCC           = %08X\n", (int)pfd->dwFourCC);
+    dprintf("       pfd->dwRGBBitCount      = %08X\n", (int)pfd->dwRGBBitCount);
+    dprintf("       pfd->dwRBitMask         = %08X\n", (int)pfd->dwRBitMask);
+    dprintf("       pfd->dwGBitMask         = %08X\n", (int)pfd->dwGBitMask);
+    dprintf("       pfd->dwBBitMask         = %08X\n", (int)pfd->dwBBitMask);
+    dprintf("       pfd->dwRGBAlphaBitMask  = %08X\n", (int)pfd->dwRGBAlphaBitMask);
+}
+
+void dump_ddbltfx(LPDDBLTFX lpDDBltFx)
+{
+    dprintf("       lpDDBltFx->dwSize           = %d\n", (int)lpDDBltFx->dwSize);
+    dprintf("       lpDDBltFx->dwDDFX           = %08X\n", (int)lpDDBltFx->dwDDFX);
+    dprintf("       lpDDBltFx->dwROP            = %08X\n", (int)lpDDBltFx->dwROP);
+    dprintf("       lpDDBltFx->dwDDROP          = %08X\n", (int)lpDDBltFx->dwDDROP);
+    dprintf("       lpDDBltFx->dwRotationAngle  = %08X\n", (int)lpDDBltFx->dwRotationAngle);
+    dprintf("       lpDDBltFx->dwFillColor      = %08X\n", (int)lpDDBltFx->dwFillColor);
 }

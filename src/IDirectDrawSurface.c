@@ -31,26 +31,22 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
 
     if (lpDDSurfaceDesc->dwFlags & DDSD_CAPS)
     {
+        this->dwCaps = lpDDSurfaceDesc->ddsCaps.dwCaps;
+
         if (lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
             this->width = this->dd->width;
             this->height = this->dd->height;
-
-            this->hDC = CreateCompatibleDC(this->dd->hDC);
-            this->bitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
-
-            this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 256) + 1024);
-            this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
-            this->bmi->bmiHeader.biWidth = this->width;
-            this->bmi->bmiHeader.biHeight = -this->height;
-            this->bmi->bmiHeader.biPlanes = 1;
-            this->bmi->bmiHeader.biBitCount = this->bpp;
-            this->bmi->bmiHeader.biCompression = BI_RGB;
-
-            SelectObject(this->hDC, this->bitmap);
+            this->dwCaps |= DDSCAPS_FRONTBUFFER;
         }
 
-        this->dwCaps = lpDDSurfaceDesc->ddsCaps.dwCaps;
+        if (!(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY))
+        {
+            this->dwCaps |= DDSCAPS_VIDEOMEMORY;
+        }
+
+        this->dwCaps &= ~DDSCAPS_SYSTEMMEMORY;
+        this->dwCaps |= DDSCAPS_VIDEOMEMORY;
     }
 
     if (!(lpDDSurfaceDesc->dwFlags & DDSD_CAPS) || !(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) )
@@ -64,25 +60,23 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         this->lXPitch = this->bpp / 8;
         this->lPitch = this->width * this->lXPitch;
         this->surface = calloc(1, this->lPitch * this->height * this->lXPitch);
+
+        this->hDC = CreateCompatibleDC(this->dd->hDC);
+        this->bitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
+
+        this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 256) + 1024);
+        this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
+        this->bmi->bmiHeader.biWidth = this->width;
+        this->bmi->bmiHeader.biHeight = -this->height;
+        this->bmi->bmiHeader.biPlanes = 1;
+        this->bmi->bmiHeader.biBitCount = this->bpp;
+        this->bmi->bmiHeader.biCompression = BI_RGB;
+
+        SelectObject(this->hDC, this->bitmap);
     }
 
-    this->desc.dwSize = sizeof(this->desc);
-    this->desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-    this->desc.dwWidth = this->width;
-    this->desc.dwHeight = this->height;
-    this->desc.lPitch = this->lPitch;
-    this->desc.lpSurface = this->surface;
-    this->desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
-    this->desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
-    /* RGB 555 */
-    this->desc.ddpfPixelFormat.dwRBitMask = 0x7C00;
-    this->desc.ddpfPixelFormat.dwGBitMask = 0x03E0;
-    this->desc.ddpfPixelFormat.dwBBitMask = 0x001F;
-
     dprintf("IDirectDrawSurface::construct() -> %p\n", this);
-    dprintf("   dwWidth   = %d\n", (int)this->desc.dwWidth);
-    dprintf("   dwHeight  = %d\n", (int)this->desc.dwHeight);
-    dprintf("   lpSurface = %p\n", this->desc.lpSurface);
+    dump_ddsurfacedesc(lpDDSurfaceDesc);
     this->ref++;
     return this;
 }
@@ -146,10 +140,34 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 {
     ENTER;
     HRESULT ret = DD_OK;
+    IDirectDrawSurfaceImpl *srcImpl = (IDirectDrawSurfaceImpl *)lpDDSrcSurface;
+
+    // consistently fail this test to get consistent debug output for real and emul
+    if (lpDDBltFx)
+        return ret;
 
     if (PROXY)
     {
         ret = IDirectDrawSurface_Blt(this->real, lpDestRect, lpDDSrcSurface, lpSrcRect, dwFlags, lpDDBltFx);
+    }
+    else
+    {
+        EnterCriticalSection(&this->dd->cs);
+        if (lpDestRect && lpSrcRect)
+        {
+            for (int x = 0; x < lpDestRect->right - lpDestRect->left - 1; x++) {
+                for (int y = 0; y < lpDestRect->bottom - lpDestRect->top - 1; y++) {
+                    this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = srcImpl->surface[x + lpSrcRect->left + (srcImpl->width * (y + lpSrcRect->top))];
+                }
+            }
+        }
+
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        {
+            SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
+            BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
+        }
+        LeaveCriticalSection(&this->dd->cs);
     }
 
     dprintf("IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%d, lpDDBltFx=%p) -> %08X\n", this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
@@ -162,6 +180,11 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     if (lpSrcRect)
     {
         dprintf("  src: l: %d t: %d r: %d b: %d\n", (int)lpSrcRect->left, (int)lpSrcRect->top, (int)lpSrcRect->right, (int)lpSrcRect->bottom);
+    }
+
+    if (lpDDBltFx)
+    {
+        dump_ddbltfx(lpDDBltFx);
     }
 
     LEAVE;
@@ -201,16 +224,20 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
         lpDDSurfaceDesc->dwWidth = this->width;
         lpDDSurfaceDesc->dwHeight = this->height;
         lpDDSurfaceDesc->lPitch = this->lPitch;
-        lpDDSurfaceDesc->lpSurface = this->surface;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
         lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        /* RGB 555 */
         lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
         lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
+
+
+        lpDDSurfaceDesc->dwFlags = 0x0000100F;
+        lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
     }
 
     dprintf("IDirectDrawSurface::GetSurfaceDesc(this=%p, lpDDSurfaceDesc=%p) -> %08X\n", this, lpDDSurfaceDesc, (int)ret);
+    dump_ddsurfacedesc(lpDDSurfaceDesc);
     LEAVE;
     return ret;
 }
@@ -353,19 +380,29 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         lpDDSurfaceDesc->dwHeight = this->height;
         lpDDSurfaceDesc->lPitch = this->lPitch;
         lpDDSurfaceDesc->lpSurface = this->surface;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
         lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-
-        if (this->bpp == 16)
-        {
-            /* RGB 555 */
-            lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
-        }
+        lpDDSurfaceDesc->dwFlags = 0x0000100F;
+        lpDDSurfaceDesc->ddsCaps.dwCaps = 0x10004000;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
+        lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
     }
 
+#if 0
+    RECT rc;
+    rc.left = 0;
+    rc.top = 0;
+    rc.right = this->dd->width;
+    rc.bottom = this->dd->height;
+    FillRect(this->dd->hDC, &rc, (HBRUSH)(COLOR_WINDOW+1));
+    RedrawWindow(this->dd->hWnd, &rc, NULL, RDW_INTERNALPAINT);
+#endif
+
     dprintf("IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n", this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent, (int)ret);
+    dump_ddsurfacedesc(lpDDSurfaceDesc);
     LEAVE;
     return ret;
 }
@@ -427,6 +464,22 @@ HRESULT __stdcall _SetPalette(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWPALETTE 
     return DD_OK;
 }
 
+BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
+{
+    IDirectDrawSurfaceImpl *this = (IDirectDrawSurfaceImpl *)lParam;
+
+    HDC hDC = GetWindowDC(hWnd);
+
+    RECT size;
+    GetClientRect(hWnd, &size);
+
+    RECT pos;
+    GetWindowRect(hWnd, &pos);
+
+    BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
+    return FALSE;
+}
+
 static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
 {
     ENTER;
@@ -440,9 +493,9 @@ static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
     {
         if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
-            dprintf("blitting primary %dx%x@%d!\n", this->width, this->height, this->bpp);
             SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
             BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
+            EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
         }
     }
 
