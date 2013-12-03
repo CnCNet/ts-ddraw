@@ -29,8 +29,6 @@ static HRESULT WINAPI (*real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUn
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter) 
 {
-    dprintf("DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
-
 #ifdef _DEBUG
     char buf[32];
     buf[0] = '\0';
@@ -46,6 +44,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     GetEnvironmentVariable("DDRAW_TRACE", buf, sizeof buf);
     if (buf[0]) TRACE = 1;
 #endif
+    dprintf("DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
 
     IDirectDrawImpl *ddraw = IDirectDrawImpl_construct();
 

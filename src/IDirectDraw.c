@@ -367,6 +367,27 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
     {
         this->hWnd = hWnd;
         this->hDC = GetDC(this->hWnd);
+
+        PIXELFORMATDESCRIPTOR pfd;
+
+        memset(&pfd, 0, sizeof(pfd));
+        pfd.nSize = sizeof(pfd);
+        pfd.nVersion = 1;
+        pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+        pfd.iPixelType = PFD_TYPE_RGBA;
+        pfd.cColorBits = 16;
+        pfd.iLayerType = PFD_MAIN_PLANE;
+        if (!SetPixelFormat( this->hDC, ChoosePixelFormat( this->hDC, &pfd ), &pfd ))
+        {
+            dprintf("SetPixelFormat failed!\n");
+            ret = DDERR_UNSUPPORTED;
+        }
+
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+        this->width = rc.right;
+        this->height = rc.bottom;
+        this->bpp = 16;
     }
 
     dprintf("IDirectDraw::SetCooperativeLevel(this=%p, hWnd=%08X, dwFlags=%08X) -> %08X\n", this, (int)hWnd, (int)dwFlags, (int)ret);
