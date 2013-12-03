@@ -18,6 +18,9 @@
 #include <ddraw.h>
 #include "main.h"
 
+#ifndef IDIRECTDRAW_H
+#define IDIRECTDRAW_H
+
 typedef struct IDirectDrawImplVtbl IDirectDrawImplVtbl;
 typedef struct IDirectDrawImpl IDirectDrawImpl;
 
@@ -54,6 +57,8 @@ struct IDirectDrawImpl
     struct IDirectDrawImplVtbl *lpVtbl;
 
     IDirectDraw *real;
+    CRITICAL_SECTION cs;
+    IDirectDrawImpl* dd;
 
     int ref;
 
@@ -65,3 +70,5 @@ struct IDirectDrawImpl
 };
 
 IDirectDrawImpl *IDirectDrawImpl_construct();
+
+#endif

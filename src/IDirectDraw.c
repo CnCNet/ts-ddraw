@@ -17,6 +17,7 @@
 #include "main.h"
 #include "IDirectDraw.h"
 #include "IDirectDrawClipper.h"
+#include "IDirectDrawSurface.h"
 
 static IDirectDrawImplVtbl Vtbl;
 
@@ -24,29 +25,37 @@ IDirectDrawImpl *IDirectDrawImpl_construct()
 {
     IDirectDrawImpl *this = calloc(1, sizeof(IDirectDrawImpl));
     this->lpVtbl = &Vtbl;
+    this->dd = this;
     dprintf("IDirectDraw::construct() -> %p\n", this);
     this->ref++;
+    InitializeCriticalSection(&this->cs);
     return this;
 }
 
 static HRESULT __stdcall _QueryInterface(IDirectDrawImpl *this, REFIID riid, void **obj)
 {
+    ENTER;
     HRESULT ret = IDirectDraw_QueryInterface(this->real, riid, obj);
     dprintf("IDirectDraw::QueryInterface(this=%p, riid=%p, obj=%p) -> %08X\n", this, riid, obj, (int)ret);
+    LEAVE;
     return ret;
 }
 
 static ULONG __stdcall _AddRef(IDirectDrawImpl *this)
 {
+    ENTER;
     ULONG ret = IDirectDraw_AddRef(this->real);
     dprintf("IDirectDraw::AddRef(this=%p) -> %08X\n", this, (int)ret);
+    LEAVE;
     return ret;
 }
 
 static ULONG __stdcall _Release(IDirectDrawImpl *this)
 {
+    ENTER;
     ULONG ret = IDirectDraw_Release(this->real);
     dprintf("IDirectDraw::Release(this=%p) -> %08X\n", this, (int)ret);
+    LEAVE;
     return ret;
 }
 
@@ -57,15 +66,16 @@ static HRESULT __stdcall _Compact(IDirectDrawImpl *this)
     return ret;
 }
 
-static HRESULT __stdcall _CreatePalette(IDirectDrawImpl *this, DWORD dwFlags, LPPALETTEENTRY lpDDColorArray, LPDIRECTDRAWPALETTE FAR * lpDDPalette, IUnknown FAR * unkOuter)
+static HRESULT __stdcall _CreatePalette(IDirectDrawImpl *this, DWORD dwFlags, LPPALETTEENTRY lpDDColorArray, LPDIRECTDRAWPALETTE FAR * lplpDDPalette, IUnknown FAR * pUnkOuter)
 {
-    HRESULT ret = IDirectDraw_CreatePalette(this->real, dwFlags, lpDDColorArray, lpDDPalette, unkOuter);
-    dprintf("IDirectDraw::CreatePalette(this=%p, dwFlags=%d, DDColorArray=%p, DDPalette=%p, unkOuter=%p) -> %08X\n", this, (int)dwFlags, lpDDColorArray, lpDDPalette, unkOuter, (int)ret);
+    HRESULT ret = IDirectDraw_CreatePalette(this->real, dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter);
+    dprintf("IDirectDraw::CreatePalette(this=%p, dwFlags=%d, lpDDColorArray=%p, lplpDDPalette=%p, pUnkOuter=%p) -> %08X\n", this, (int)dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter, (int)ret);
     return ret;
 }
 
 static HRESULT __stdcall _CreateClipper(IDirectDrawImpl *this, DWORD dwFlags, LPDIRECTDRAWCLIPPER FAR *lplpDDClipper, IUnknown FAR *pUnkOuter)
 {
+    ENTER;
     HRESULT ret = DD_OK;
     IDirectDrawClipperImpl *impl = IDirectDrawClipperImpl_construct();
     *lplpDDClipper = (IDirectDrawClipper *)impl;
@@ -76,23 +86,23 @@ static HRESULT __stdcall _CreateClipper(IDirectDrawImpl *this, DWORD dwFlags, LP
     }
 
     dprintf("IDirectDraw::CreateClipper(this=%p, dwFlags=%d, lplpDDClipper=%p, unkOuter=%p) -> %08X\n", this, (int)dwFlags, lplpDDClipper, pUnkOuter, (int)ret);
+    LEAVE;
     return ret;
 }
 
-static HRESULT __stdcall _CreateSurface(IDirectDrawImpl *this, LPDDSURFACEDESC lpDDSurfaceDesc, LPDIRECTDRAWSURFACE FAR *lpDDSurface, IUnknown FAR * unkOuter)
+static HRESULT __stdcall _CreateSurface(IDirectDrawImpl *this, LPDDSURFACEDESC lpDDSurfaceDesc, LPDIRECTDRAWSURFACE FAR *lplpDDSurface, IUnknown FAR * pUnkOuter)
 {
+    ENTER;
     HRESULT ret = DD_OK;
+    IDirectDrawSurfaceImpl *impl = IDirectDrawSurfaceImpl_construct(this, lpDDSurfaceDesc);
+    *lplpDDSurface = (IDirectDrawSurface *)impl;
 
     if (PROXY)
     {
-        ret = IDirectDraw_CreateSurface(this->real, lpDDSurfaceDesc, lpDDSurface, unkOuter);
-    }
-    else
-    {
-        // FIXME: implement 
+        ret = IDirectDraw_CreateSurface(this->real, lpDDSurfaceDesc, &impl->real, pUnkOuter);
     }
 
-    dprintf("IDirectDraw::CreateSurface(this=%p, lpDDSurfaceDesc=%p, lpDDSurface=%p, unkOuter=%p) -> %08X\n", this, lpDDSurfaceDesc, lpDDSurface, unkOuter, (int)ret);
+    dprintf("IDirectDraw::CreateSurface(this=%p, lpDDSurfaceDesc=%p, lplpDDSurface=%p, pUnkOuter=%p) -> %08X\n", this, lpDDSurfaceDesc, lplpDDSurface, pUnkOuter, (int)ret);
 
     if (VERBOSE)
     {
@@ -100,6 +110,7 @@ static HRESULT __stdcall _CreateSurface(IDirectDrawImpl *this, LPDDSURFACEDESC l
         dump_ddsurfacedesc(lpDDSurfaceDesc);
     }
 
+    LEAVE;
     return ret;
 }
 
@@ -143,10 +154,25 @@ static HRESULT __stdcall _GetCaps(IDirectDrawImpl *this, LPDDCAPS lpDDDriverCaps
     {
         if (lpDDDriverCaps)
         {
-            // some magic numbers for now
-            memset(lpDDDriverCaps, 0, sizeof(*lpDDDriverCaps));
-            lpDDDriverCaps->dwCaps  = 0xF5408669;
-            lpDDDriverCaps->dwCaps2 = 0x000A1801;
+            lpDDDriverCaps->dwSize = sizeof(DDCAPS);
+            lpDDDriverCaps->dwCaps = DDCAPS_BLT|DDCAPS_PALETTE;
+            lpDDDriverCaps->dwCKeyCaps = 0;
+            lpDDDriverCaps->dwPalCaps = DDPCAPS_8BIT|DDPCAPS_PRIMARYSURFACE;
+            lpDDDriverCaps->dwVidMemTotal = 16777216;
+            lpDDDriverCaps->dwVidMemFree = 16777216;
+            lpDDDriverCaps->dwMaxVisibleOverlays = 0;
+            lpDDDriverCaps->dwCurrVisibleOverlays = 0;
+            lpDDDriverCaps->dwNumFourCCCodes = 0;
+            lpDDDriverCaps->dwAlignBoundarySrc = 0;
+            lpDDDriverCaps->dwAlignSizeSrc = 0;
+            lpDDDriverCaps->dwAlignBoundaryDest = 0;
+            lpDDDriverCaps->dwAlignSizeDest = 0;
+        }
+
+        if (lpDDEmulCaps)
+        {
+            memset(lpDDEmulCaps, 0, sizeof(*lpDDEmulCaps));
+            lpDDDriverCaps->dwSize = sizeof(*lpDDEmulCaps);
         }
     }
 
@@ -225,6 +251,7 @@ static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
 
 static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWORD height, DWORD bpp)
 {
+    ENTER;
     HRESULT ret = DD_OK;
 
     if (PROXY)
@@ -239,6 +266,21 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         this->width = width;
         this->height = height;
         this->bpp = bpp;
+
+        PIXELFORMATDESCRIPTOR pfd;
+
+        memset(&pfd, 0, sizeof(pfd));
+        pfd.nSize = sizeof(pfd);
+        pfd.nVersion = 1;
+        pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+        pfd.iPixelType = PFD_TYPE_RGBA;
+        pfd.cColorBits = this->bpp;
+        pfd.iLayerType = PFD_MAIN_PLANE;
+        if (!SetPixelFormat( this->hDC, ChoosePixelFormat( this->hDC, &pfd ), &pfd ))
+        {
+            dprintf("SetPixelFormat failed!\n");
+            ret = DDERR_UNSUPPORTED;
+        }
 
         SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
 
@@ -261,11 +303,13 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
     }
 
     dprintf("IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d) -> %08X\n", this, (int)width, (int)height, (int)bpp, (int)ret);
+    LEAVE;
     return ret;
 }
 
 static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, DWORD dwFlags)
 {
+    ENTER;
     HRESULT ret = DD_OK;
 
     if (PROXY)
@@ -274,22 +318,12 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
     }
     else
     {
-        PIXELFORMATDESCRIPTOR pfd;
-
         this->hWnd = hWnd;
         this->hDC = GetDC(this->hWnd);
-
-        memset(&pfd, 0, sizeof(pfd));
-        pfd.nSize = sizeof(pfd);
-        pfd.nVersion = 1;
-        pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
-        pfd.iPixelType = PFD_TYPE_RGBA;
-        pfd.cColorBits = this->bpp;
-        pfd.iLayerType = PFD_MAIN_PLANE;
-        SetPixelFormat( this->hDC, ChoosePixelFormat( this->hDC, &pfd ), &pfd );
     }
 
     dprintf("IDirectDraw::SetCooperativeLevel(this=%p, hWnd=%08X, dwFlags=%08X) -> %08X\n", this, (int)hWnd, (int)dwFlags, (int)ret);
+    LEAVE;
     return ret;
 }
 

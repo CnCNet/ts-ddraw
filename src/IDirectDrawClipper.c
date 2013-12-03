@@ -32,7 +32,7 @@ static HRESULT __stdcall _QueryInterface(IDirectDrawClipperImpl *this, REFIID ri
 {
     HRESULT ret = DDERR_UNSUPPORTED;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_QueryInterface(this->real, riid, obj);
     }
@@ -45,7 +45,7 @@ static ULONG __stdcall _AddRef(IDirectDrawClipperImpl *this)
 {
     ULONG ret = ++this->ref;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_AddRef(this->real);
     }
@@ -59,15 +59,15 @@ static ULONG __stdcall _Release(IDirectDrawClipperImpl *this)
 {
     ULONG ret = --this->ref;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_Release(this->real);
     }
     else
     {
-        if (ret == 0)
+        if (this->ref == 0)
         {
-            free(this);
+            //free(this);
         }
     }
 
@@ -79,7 +79,7 @@ static HRESULT __stdcall _GetClipList(IDirectDrawClipperImpl *this, LPRECT lpRec
 {
     HRESULT ret = DDERR_UNSUPPORTED;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_GetClipList(this->real, lpRect, lpClipList, lpdwSize);
     }
@@ -92,7 +92,7 @@ static HRESULT __stdcall _GetHWnd(IDirectDrawClipperImpl *this, HWND FAR *lphWnd
 {
     HRESULT ret = DDERR_UNSUPPORTED;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_GetHWnd(this->real, lphWnd);
     }
@@ -105,7 +105,7 @@ static HRESULT __stdcall _Initialize(IDirectDrawClipperImpl *this, LPDIRECTDRAW 
 {
     HRESULT ret = DDERR_UNSUPPORTED;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_Initialize(this->real, lpDD, dwFlags);
     }
@@ -118,7 +118,7 @@ static HRESULT __stdcall _IsClipListChanged(IDirectDrawClipperImpl *this, BOOL F
 {
     HRESULT ret = DDERR_UNSUPPORTED;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_IsClipListChanged(this->real, lpbChanged);
     }
@@ -131,7 +131,7 @@ static HRESULT __stdcall _SetClipList(IDirectDrawClipperImpl *this, LPRGNDATA lp
 {
     HRESULT ret = DDERR_UNSUPPORTED;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_SetClipList(this->real, lpClipList, dwFlags);
     }
@@ -142,11 +142,15 @@ static HRESULT __stdcall _SetClipList(IDirectDrawClipperImpl *this, LPRGNDATA lp
 
 static HRESULT __stdcall _SetHWnd(IDirectDrawClipperImpl *this, DWORD dwFlags, HWND hWnd)
 {
-    HRESULT ret = DDERR_UNSUPPORTED;
+    HRESULT ret = DD_OK;
 
-    if (PROXY)
+    if (this->real)
     {
         ret = IDirectDrawClipper_SetHWnd(this->real, dwFlags, hWnd);
+    }
+    else
+    {
+        this->hWnd = hWnd;
     }
 
     dprintf("IDirectDrawClipper::SetHWnd(this=%p, dwFlags=%08X, hWnd=%08X) -> %08X\n", this, (int)dwFlags, (int)hWnd, (int)ret);

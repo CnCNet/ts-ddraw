@@ -29,8 +29,12 @@
 
 extern int PROXY;
 extern int VERBOSE;
+extern int SYNC;
 
 void dump_ddcaps(LPDDCAPS);
 void dump_ddsurfacedesc(LPDDSURFACEDESC);
+
+#define ENTER if (SYNC) EnterCriticalSection(&this->dd->cs)
+#define LEAVE if (SYNC) { LeaveCriticalSection(&this->dd->cs); } fflush(stdout)
 
 #endif

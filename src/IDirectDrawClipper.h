@@ -44,7 +44,7 @@ struct IDirectDrawClipperImpl
     IDirectDrawClipper *real;
 
     int ref;
-
+    HWND hWnd;
 };
 
 IDirectDrawClipperImpl *IDirectDrawClipperImpl_construct();

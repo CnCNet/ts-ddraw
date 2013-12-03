@@ -19,6 +19,8 @@
 
 int PROXY = 0;
 int VERBOSE = 1;
+int SYNC = 0;
+
 static HANDLE real_dll = NULL;
 static HRESULT WINAPI (*real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*) = NULL;
 
@@ -33,6 +35,9 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_LESS", buf, sizeof buf);
     if (buf[0]) VERBOSE = 0;
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_SYNC", buf, sizeof buf);
+    if (buf[0]) SYNC = 0;
 
     IDirectDrawImpl *ddraw = IDirectDrawImpl_construct();
 
