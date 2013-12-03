@@ -260,11 +260,16 @@ static HRESULT __stdcall _Initialize(IDirectDrawImpl *this, GUID *lpGUID)
 
 static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
 {
-    HRESULT ret = DDERR_UNSUPPORTED;
+    HRESULT ret = DD_OK;
 
     if (PROXY)
     {
         ret = IDirectDraw_RestoreDisplayMode(this->real);
+    }
+    else
+    {
+        this->winMode.dmFields = DM_BITSPERPEL|DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFLAGS|DM_DISPLAYFREQUENCY|DM_POSITION;
+        ChangeDisplaySettings(&this->winMode, 0);
     }
 
     dprintf("IDirectDraw::RestoreDisplayMode(this=%p) -> %08X\n", this, (int)ret);
@@ -288,6 +293,14 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         this->width = width;
         this->height = height;
         this->bpp = bpp;
+
+        this->winMode.dmSize = sizeof(DEVMODE);
+        this->winMode.dmDriverExtra = 0;
+
+        if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &this->winMode) == FALSE)
+        {
+            return DDERR_INVALIDMODE;
+        }
 
         PIXELFORMATDESCRIPTOR pfd;
 

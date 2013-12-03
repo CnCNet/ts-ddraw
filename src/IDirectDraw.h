@@ -59,6 +59,7 @@ struct IDirectDrawImpl
     IDirectDraw *real;
     CRITICAL_SECTION cs;
     IDirectDrawImpl* dd;
+    DEVMODE winMode;
 
     int ref;
 

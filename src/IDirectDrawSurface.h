@@ -44,6 +44,9 @@ struct IDirectDrawSurfaceImpl
     PBITMAPINFO bmi;
     HBITMAP bitmap;
     HDC hDC;
+    CRITICAL_SECTION lock;
+    HANDLE thread;
+    HANDLE frame;
 };
 
 struct IDirectDrawSurfaceImplVtbl

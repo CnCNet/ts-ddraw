@@ -20,6 +20,55 @@
 
 static IDirectDrawSurfaceImplVtbl Vtbl;
 
+/* the TS hack itself */
+BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
+{
+    IDirectDrawSurfaceImpl *this = (IDirectDrawSurfaceImpl *)lParam;
+
+    HDC hDC = GetWindowDC(hWnd);
+
+    RECT size;
+    GetClientRect(hWnd, &size);
+
+    RECT pos;
+    GetWindowRect(hWnd, &pos);
+
+    BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
+    return FALSE;
+}
+
+DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
+{
+    DWORD tick_start = 0;
+    DWORD tick_end = 0;
+    DWORD frame_len = 1000.0f / 60;
+
+    while (this->thread)
+    {
+        WaitForSingleObject(this->frame, INFINITE);
+
+        tick_start = GetTickCount();
+
+        EnterCriticalSection(&this->lock);
+
+        SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
+        BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
+        EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
+        ResetEvent(this->frame);
+
+        LeaveCriticalSection(&this->lock);
+
+        tick_end = GetTickCount();
+
+        if (tick_end - tick_start < frame_len)
+        {
+            Sleep( frame_len - (tick_end - tick_start) );
+        }
+    }
+
+    return 0;
+}
+
 IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDImpl, LPDDSURFACEDESC lpDDSurfaceDesc)
 {
     IDirectDrawSurfaceImpl *this = calloc(1, sizeof(IDirectDrawSurfaceImpl));
@@ -38,15 +87,14 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
             this->width = this->dd->width;
             this->height = this->dd->height;
             this->dwCaps |= DDSCAPS_FRONTBUFFER;
+            InitializeCriticalSection(&this->lock);
         }
 
         if (!(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY))
         {
-            this->dwCaps |= DDSCAPS_VIDEOMEMORY;
+            // we are always in system memory for performance
+            this->dwCaps |= DDSCAPS_SYSTEMMEMORY;
         }
-
-        this->dwCaps &= ~DDSCAPS_SYSTEMMEMORY;
-        this->dwCaps |= DDSCAPS_VIDEOMEMORY;
     }
 
     if (!(lpDDSurfaceDesc->dwFlags & DDSD_CAPS) || !(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) )
@@ -73,6 +121,13 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         this->bmi->bmiHeader.biCompression = BI_RGB;
 
         SelectObject(this->hDC, this->bitmap);
+    }
+
+    if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+    {
+        dprintf("Starting renderer.\n");
+        this->frame = CreateEvent(NULL, TRUE, FALSE, NULL);
+        this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
     }
 
     dprintf("IDirectDrawSurface::construct() -> %p\n", this);
@@ -111,12 +166,30 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
 
     if (this->ref == 0)
     {
+        if (this->thread)
+        {
+            HANDLE thread = this->thread;
+            this->thread = NULL;
+            dprintf("Waiting for renderer to stop.\n");
+            SetEvent(this->frame);
+            WaitForSingleObject(thread, INFINITE);
+            dprintf("Renderer stopped.\n");
+        }
+
+        if (this->frame)
+        {
+            CloseHandle(this->frame);
+            this->frame = NULL;
+        }
+
         if (this->surface)
         {
             free(this->surface);
             this->surface = NULL;
         }
 
+        DeleteObject(this->bitmap);
+        DeleteDC(this->hDC);
         free (this);
     }
 
@@ -142,9 +215,11 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     HRESULT ret = DD_OK;
     IDirectDrawSurfaceImpl *srcImpl = (IDirectDrawSurfaceImpl *)lpDDSrcSurface;
 
+#if 0
     // consistently fail this test to get consistent debug output for real and emul
     if (lpDDBltFx)
         return ret;
+#endif
 
     if (PROXY)
     {
@@ -152,11 +227,15 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     }
     else
     {
-        EnterCriticalSection(&this->dd->cs);
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        {
+            EnterCriticalSection(&this->lock);
+        }
+
         if (lpDestRect && lpSrcRect)
         {
-            for (int x = 0; x < lpDestRect->right - lpDestRect->left - 1; x++) {
-                for (int y = 0; y < lpDestRect->bottom - lpDestRect->top - 1; y++) {
+            for (int x = 0; x < lpDestRect->right - lpDestRect->left; x++) {
+                for (int y = 0; y < lpDestRect->bottom - lpDestRect->top; y++) {
                     this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = srcImpl->surface[x + lpSrcRect->left + (srcImpl->width * (y + lpSrcRect->top))];
                 }
             }
@@ -164,10 +243,9 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
         if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
-            SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
-            BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
+            LeaveCriticalSection(&this->lock);
+            SetEvent(this->frame);
         }
-        LeaveCriticalSection(&this->dd->cs);
     }
 
     dprintf("IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%d, lpDDBltFx=%p) -> %08X\n", this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
@@ -389,17 +467,12 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
         lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
-    }
 
-#if 0
-    RECT rc;
-    rc.left = 0;
-    rc.top = 0;
-    rc.right = this->dd->width;
-    rc.bottom = this->dd->height;
-    FillRect(this->dd->hDC, &rc, (HBRUSH)(COLOR_WINDOW+1));
-    RedrawWindow(this->dd->hWnd, &rc, NULL, RDW_INTERNALPAINT);
-#endif
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        {
+            //EnterCriticalSection(&this->lock);
+        }
+    }
 
     dprintf("IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n", this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent, (int)ret);
     dump_ddsurfacedesc(lpDDSurfaceDesc);
@@ -464,22 +537,6 @@ HRESULT __stdcall _SetPalette(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWPALETTE 
     return DD_OK;
 }
 
-BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
-{
-    IDirectDrawSurfaceImpl *this = (IDirectDrawSurfaceImpl *)lParam;
-
-    HDC hDC = GetWindowDC(hWnd);
-
-    RECT size;
-    GetClientRect(hWnd, &size);
-
-    RECT pos;
-    GetWindowRect(hWnd, &pos);
-
-    BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
-    return FALSE;
-}
-
 static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
 {
     ENTER;
@@ -493,9 +550,8 @@ static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
     {
         if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
-            SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
-            BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
-            EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
+            //LeaveCriticalSection(&this->lock);
+            SetEvent(this->frame);
         }
     }
 
