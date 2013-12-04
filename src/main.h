@@ -24,18 +24,12 @@
 
     #include <stdio.h>
     int dprintf(const char *, ...);
-    #define ENTER if (SYNC) EnterCriticalSection(&this->dd->cs)
-    #define LEAVE if (SYNC) { LeaveCriticalSection(&this->dd->cs); } fflush(stdout)
 
     extern int PROXY;
     extern int VERBOSE;
-    extern int SYNC;
 
 #else
-
     #define dprintf(...)
-    #define ENTER
-    #define LEAVE 
 
     #define PROXY 0
     #define VERBOSE 0
@@ -43,6 +37,9 @@
 
 #endif
 
+// TODO: remove these
+#define ENTER
+#define LEAVE 
 
 void dump_ddcaps(LPDDCAPS);
 void dump_ddsurfacedesc(LPDDSURFACEDESC);

@@ -20,7 +20,6 @@
 #ifdef _DEBUG
 int PROXY = 0;
 int VERBOSE = 1;
-int SYNC = 0;
 int TRACE = 0;
 
 static HANDLE real_dll = NULL;
@@ -37,9 +36,6 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_LESS", buf, sizeof buf);
     if (buf[0]) VERBOSE = 0;
-    buf[0] = '\0';
-    GetEnvironmentVariable("DDRAW_SYNC", buf, sizeof buf);
-    if (buf[0]) SYNC = 1;
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_TRACE", buf, sizeof buf);
     if (buf[0]) TRACE = 1;

@@ -49,7 +49,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         tick_start = GetTickCount();
 
-        EnterCriticalSection(&this->lock);
+        //EnterCriticalSection(&this->lock);
 
         // avoid drawing when DC lock is held
         if (this->overlayDCLocked)
@@ -63,7 +63,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
         ResetEvent(this->frame);
 
-        LeaveCriticalSection(&this->lock);
+        //LeaveCriticalSection(&this->lock);
 
         tick_end = GetTickCount();
 
@@ -140,6 +140,10 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         dprintf("Starting renderer.\n");
         this->frame = CreateEvent(NULL, TRUE, FALSE, NULL);
         this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
+        if (SetThreadPriority(this->thread, THREAD_PRIORITY_ABOVE_NORMAL))
+        {
+            dprintf("Renderer set to higher priority.\n");
+        }
     }
 
     dprintf("IDirectDrawSurface::construct() -> %p\n", this);
