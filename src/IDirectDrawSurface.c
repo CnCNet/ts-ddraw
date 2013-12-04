@@ -51,6 +51,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         EnterCriticalSection(&this->lock);
 
+        // avoid drawing when DC lock is held
+        if (this->overlayDCLocked)
+        {
+            LeaveCriticalSection(&this->lock);
+            continue;
+        }
+
         SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
         BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
         EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
@@ -106,10 +113,14 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     {
         this->lXPitch = this->bpp / 8;
         this->lPitch = this->width * this->lXPitch;
-        this->surface = calloc(1, this->lPitch * this->height * this->lXPitch);
 
+        this->surface = calloc(1, this->lPitch * this->height * this->lXPitch);
         this->hDC = CreateCompatibleDC(this->dd->hDC);
         this->bitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
+
+        this->overlay = calloc(1, this->lPitch * this->height * this->lXPitch);
+        this->overlayDC = CreateCompatibleDC(this->dd->hDC);
+        this->overlayBitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
 
         this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 256) + 1024);
         this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
@@ -177,22 +188,15 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             dprintf("Renderer stopped.\n");
         }
 
-        if (this->frame)
-        {
-            CloseHandle(this->frame);
-            this->frame = NULL;
-        }
-
-        if (this->surface)
-        {
-            free(this->surface);
-            this->surface = NULL;
-        }
-
+        CloseHandle(this->frame);
+        free(this->surface);
+        free(this->overlay);
         DeleteCriticalSection(&this->lock);
         DeleteObject(this->bitmap);
+        DeleteObject(this->overlayBitmap);
         DeleteDC(this->hDC);
-        free (this);
+        DeleteDC(this->overlayDC);
+        free(this);
     }
 
     dprintf("IDirectDrawSurface::Release(this=%p) -> %08X\n", this, (int)ret);
@@ -392,21 +396,18 @@ HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
     }
     else
     {
-        EnterCriticalSection(&this->lock);
-
-        if (this->isLocked)
+        if (this->overlayDCLocked)
         {
             ret = DDERR_DCALREADYCREATED;
         }
         else
         {
-            this->isLocked = true;
-            *lphDC = CreateCompatibleDC(this->dd->hDC);
-            HBITMAP hbm = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
-            SelectObject(*lphDC, hbm);
+            EnterCriticalSection(&this->lock);
+            this->overlayDCLocked = true;
+            *lphDC = this->overlayDC;
+            SelectObject(this->overlayDC, this->overlayBitmap);
+            LeaveCriticalSection(&this->lock);
         }
-
-        LeaveCriticalSection(&this->lock);
     }
 
     dprintf("IDirectDrawSurface::GetDC(this=%p, lphDC=%p) -> %08X\n", this, lphDC, (int)ret);
@@ -512,8 +513,24 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
     else
     {
         EnterCriticalSection(&this->lock);
-        DeleteDC(hDC);
-        this->isLocked = false;
+
+        GetDIBits(this->overlayDC, this->overlayBitmap, 0, this->height, this->overlay, this->bmi, DIB_RGB_COLORS);
+
+        // FIXME: using black as magic transparency color
+        for (int x = 0; x < this->width; x++) {
+            for (int y = 0; y < this->height; y++) {
+                unsigned short px = this->overlay[x + (this->width * y)];
+                if (px)
+                {
+                    this->surface[x + (this->width * y)] = px;
+                }
+            }
+        }
+
+        RECT rc = { 0, 0, this->width, this->height };
+        FillRect(this->overlayDC, &rc, CreateSolidBrush(0));
+
+        this->overlayDCLocked = false;
         LeaveCriticalSection(&this->lock);
     }
 

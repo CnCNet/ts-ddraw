@@ -46,9 +46,13 @@ struct IDirectDrawSurfaceImpl
     HBITMAP bitmap;
     HDC hDC;
     CRITICAL_SECTION lock;
-    bool isLocked;
     HANDLE thread;
     HANDLE frame;
+
+    unsigned short *overlay;
+    HDC overlayDC;
+    bool overlayDCLocked;
+    HBITMAP overlayBitmap;
 };
 
 struct IDirectDrawSurfaceImplVtbl
