@@ -28,7 +28,6 @@ IDirectDrawImpl *IDirectDrawImpl_construct()
     this->dd = this;
     dprintf("IDirectDraw::construct() -> %p\n", this);
     this->ref++;
-    InitializeCriticalSection(&this->cs);
     return this;
 }
 
@@ -53,7 +52,20 @@ static ULONG __stdcall _AddRef(IDirectDrawImpl *this)
 static ULONG __stdcall _Release(IDirectDrawImpl *this)
 {
     ENTER;
-    ULONG ret = IDirectDraw_Release(this->real);
+    ULONG ret = --this->ref;
+
+    if (PROXY)
+    {
+        ret = IDirectDraw_Release(this->real);
+    }
+    else
+    {
+        if (this->ref == 0)
+        {
+            free(this);
+        }
+    }
+
     dprintf("IDirectDraw::Release(this=%p) -> %08X\n", this, (int)ret);
     LEAVE;
     return ret;

@@ -57,7 +57,6 @@ struct IDirectDrawImpl
     struct IDirectDrawImplVtbl *lpVtbl;
 
     IDirectDraw *real;
-    CRITICAL_SECTION cs;
     IDirectDrawImpl* dd;
     DEVMODE winMode;
 
