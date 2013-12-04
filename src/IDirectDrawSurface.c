@@ -87,7 +87,6 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
             this->width = this->dd->width;
             this->height = this->dd->height;
             this->dwCaps |= DDSCAPS_FRONTBUFFER;
-            InitializeCriticalSection(&this->lock);
         }
 
         if (!(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_SYSTEMMEMORY))
@@ -122,6 +121,8 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
 
         SelectObject(this->hDC, this->bitmap);
     }
+
+    InitializeCriticalSection(&this->lock);
 
     if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
     {
@@ -188,6 +189,7 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             this->surface = NULL;
         }
 
+        DeleteCriticalSection(&this->lock);
         DeleteObject(this->bitmap);
         DeleteDC(this->hDC);
         free (this);
@@ -382,11 +384,29 @@ HRESULT __stdcall _GetColorKey(IDirectDrawSurfaceImpl *this, DWORD a, LPDDCOLORK
 
 HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
 {
-    HRESULT ret = DDERR_UNSUPPORTED;
+    HRESULT ret = DD_OK;
 
     if (PROXY)
     {
         ret = IDirectDrawSurface_GetDC(this->real, lphDC);
+    }
+    else
+    {
+        EnterCriticalSection(&this->lock);
+
+        if (this->isLocked)
+        {
+            ret = DDERR_DCALREADYCREATED;
+        }
+        else
+        {
+            this->isLocked = true;
+            *lphDC = CreateCompatibleDC(this->dd->hDC);
+            HBITMAP hbm = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
+            SelectObject(*lphDC, hbm);
+        }
+
+        LeaveCriticalSection(&this->lock);
     }
 
     dprintf("IDirectDrawSurface::GetDC(this=%p, lphDC=%p) -> %08X\n", this, lphDC, (int)ret);
@@ -483,11 +503,18 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
 HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
 {
     ENTER;
-    HRESULT ret = DDERR_UNSUPPORTED;
+    HRESULT ret = DD_OK;
 
     if (PROXY)
     {
         ret = IDirectDrawSurface_ReleaseDC(this->real, hDC);
+    }
+    else
+    {
+        EnterCriticalSection(&this->lock);
+        DeleteDC(hDC);
+        this->isLocked = false;
+        LeaveCriticalSection(&this->lock);
     }
 
     dprintf("IDirectDrawSurface::ReleaseDC(this=%p, hDC=%08X) -> %08X\n", this, (int)hDC, (int)ret);

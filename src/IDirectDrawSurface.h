@@ -16,6 +16,7 @@
 
 #include <windows.h>
 #include <ddraw.h>
+#include <stdbool.h>
 #include "main.h"
 #include "IDirectDraw.h"
 
@@ -45,6 +46,7 @@ struct IDirectDrawSurfaceImpl
     HBITMAP bitmap;
     HDC hDC;
     CRITICAL_SECTION lock;
+    bool isLocked;
     HANDLE thread;
     HANDLE frame;
 };
