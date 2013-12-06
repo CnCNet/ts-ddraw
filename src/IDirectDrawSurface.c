@@ -499,10 +499,7 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
         lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
 
-        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
-        {
-            //EnterCriticalSection(&this->lock);
-        }
+        EnterCriticalSection(&this->lock);
     }
 
     dprintf("IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n", this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent, (int)ret);
@@ -598,10 +595,7 @@ static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
     }
     else
     {
-        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
-        {
-            //LeaveCriticalSection(&this->lock);
-        }
+        LeaveCriticalSection(&this->lock);
     }
 
     dprintf("IDirectDrawSurface::Unlock(this=%p, lpRect=%p) -> %08X\n", this, lpRect, (int)ret);
