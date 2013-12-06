@@ -45,25 +45,15 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     while (this->thread)
     {
-        WaitForSingleObject(this->frame, INFINITE);
-
         tick_start = GetTickCount();
 
-        //EnterCriticalSection(&this->lock);
-
-        // avoid drawing when DC lock is held
-        if (this->overlayDCLocked)
-        {
-            LeaveCriticalSection(&this->lock);
-            continue;
-        }
+        EnterCriticalSection(&this->lock);
 
         SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
         BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
         EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
-        ResetEvent(this->frame);
 
-        //LeaveCriticalSection(&this->lock);
+        LeaveCriticalSection(&this->lock);
 
         tick_end = GetTickCount();
 
@@ -114,19 +104,27 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         this->lXPitch = this->bpp / 8;
         this->lPitch = this->width * this->lXPitch;
 
-        this->surface = calloc(1, this->lPitch * this->height * this->lXPitch);
         this->hDC = CreateCompatibleDC(this->dd->hDC);
-        this->bitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
 
         this->overlay = calloc(1, this->lPitch * this->height * this->lXPitch);
 
-        this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 256) + 1024);
+        this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * this->height * this->lXPitch));
         this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
         this->bmi->bmiHeader.biWidth = this->width;
         this->bmi->bmiHeader.biHeight = -this->height;
         this->bmi->bmiHeader.biPlanes = 1;
         this->bmi->bmiHeader.biBitCount = this->bpp;
         this->bmi->bmiHeader.biCompression = BI_RGB;
+
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        {
+            this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
+        }
+        else
+        {
+            this->surface = calloc(1, this->lPitch * this->height * this->lXPitch);
+            this->bitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
+        }
 
         SelectObject(this->hDC, this->bitmap);
     }
@@ -185,13 +183,14 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             HANDLE thread = this->thread;
             this->thread = NULL;
             dprintf("Waiting for renderer to stop.\n");
-            SetEvent(this->frame);
             WaitForSingleObject(thread, INFINITE);
             dprintf("Renderer stopped.\n");
         }
 
-        CloseHandle(this->frame);
-        free(this->surface);
+        if (!(this->dwCaps & DDSCAPS_PRIMARYSURFACE))
+        {
+            free(this->surface);
+        }
         free(this->overlay);
         DeleteCriticalSection(&this->lock);
         DeleteObject(this->bitmap);
@@ -234,11 +233,14 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     }
     else
     {
+#if 0
         if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
             EnterCriticalSection(&this->lock);
         }
+#endif
 
+#if 0
         if (lpDestRect && lpSrcRect)
         {
             for (int x = 0; x < lpDestRect->right - lpDestRect->left; x++) {
@@ -247,12 +249,15 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
                 }
             }
         }
+#endif
 
+#if 0
         if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
             LeaveCriticalSection(&this->lock);
             SetEvent(this->frame);
         }
+#endif
     }
 
     dprintf("IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%d, lpDDBltFx=%p) -> %08X\n", this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
@@ -412,7 +417,6 @@ HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
             }
             this->overlayBitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
             SelectObject(*lphDC, this->overlayBitmap);
-            LeaveCriticalSection(&this->lock);
         }
     }
 
@@ -518,8 +522,6 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
     }
     else
     {
-        EnterCriticalSection(&this->lock);
-
         GetDIBits(hDC, this->overlayBitmap, 0, this->height, this->overlay, this->bmi, DIB_RGB_COLORS);
 
         // FIXME: using black as magic transparency color
@@ -599,7 +601,6 @@ static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
         if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
             //LeaveCriticalSection(&this->lock);
-            SetEvent(this->frame);
         }
     }
 
