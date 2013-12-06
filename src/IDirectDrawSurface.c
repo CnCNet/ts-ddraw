@@ -194,8 +194,15 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
         free(this->overlay);
         DeleteCriticalSection(&this->lock);
         DeleteObject(this->bitmap);
-        DeleteObject(this->overlayBitmap);
         DeleteDC(this->hDC);
+        if (this->overlayBitmap)
+        {
+            DeleteObject(this->overlayBitmap);
+        }
+        if (this->overlayDC)
+        {
+            DeleteDC(this->overlayDC);
+        }
         free(this);
     }
 
@@ -402,22 +409,15 @@ HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
     }
     else
     {
-        if (this->overlayDCLocked)
+        if (!this->overlayDC)
         {
-            ret = DDERR_DCALREADYCREATED;
-        }
-        else
-        {
-            EnterCriticalSection(&this->lock);
-            this->overlayDCLocked = true;
-            *lphDC = CreateCompatibleDC(this->dd->hDC);
-            if (this->overlayBitmap)
-            {
-                DeleteObject(this->overlayBitmap);
-            }
+            this->overlayDC = CreateCompatibleDC(this->dd->hDC);
             this->overlayBitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
-            SelectObject(*lphDC, this->overlayBitmap);
         }
+
+        EnterCriticalSection(&this->lock);
+        *lphDC = this->overlayDC;
+        SelectObject(this->overlayDC, this->overlayBitmap);
     }
 
     dprintf("IDirectDrawSurface::GetDC(this=%p, lphDC=%p) -> %08X\n", this, lphDC, (int)ret);
@@ -522,7 +522,7 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
     }
     else
     {
-        GetDIBits(hDC, this->overlayBitmap, 0, this->height, this->overlay, this->bmi, DIB_RGB_COLORS);
+        GetDIBits(this->overlayDC, this->overlayBitmap, 0, this->height, this->overlay, this->bmi, DIB_RGB_COLORS);
 
         // FIXME: using black as magic transparency color
         for (int x = 0; x < this->width; x++) {
@@ -535,9 +535,9 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
             }
         }
 
-        this->overlayDCLocked = false;
+        RECT rc = { 0, 0, this->width, this->height };
+        FillRect(this->overlayDC, &rc, CreateSolidBrush(RGB(0,0,0)));
         LeaveCriticalSection(&this->lock);
-        DeleteDC(hDC);
     }
 
     dprintf("IDirectDrawSurface::ReleaseDC(this=%p, hDC=%08X) -> %08X\n", this, (int)hDC, (int)ret);

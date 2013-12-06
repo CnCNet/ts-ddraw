@@ -50,7 +50,7 @@ struct IDirectDrawSurfaceImpl
     HANDLE frame;
 
     unsigned short *overlay;
-    bool overlayDCLocked;
+    HDC overlayDC;
     HBITMAP overlayBitmap;
 };
 
