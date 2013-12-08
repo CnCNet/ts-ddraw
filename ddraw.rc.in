@@ -1,0 +1,24 @@
+1 VERSIONINFO
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "040904B0"
+        {
+            VALUE "CompanyName", "Toni Spets"
+            VALUE "FileDescription", "DirectDraw replacement for Tiberian Sun and Red Alert 2"
+            VALUE "FileVersion", "git~__REV__"
+            VALUE "InternalName", "ddraw"
+            VALUE "LegalCopyright", "Copyright (c) 2013 Toni Spets"
+            VALUE "LegalTrademarks", ""
+            VALUE "OriginalFileName", "ddraw.dll"
+            VALUE "ProductName", "DirectDraw replacement for Tiberian Sun and Red Alert 2"
+            VALUE "ProductVersion", "git~__REV__"
+            VALUE "Comments", "http://github.com/cnc-patch/ts-ddraw/"
+        }
+    }
+
+    BLOCK "VarFileInfo"
+    {
+        VALUE "Translation",  0x0409, 0x04B0
+    }
+}
