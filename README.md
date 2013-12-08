@@ -8,9 +8,9 @@ TODO
 
   * alt-tab (minimize on lost focus, restore on refocus)
   * windowed mode
-  * Blt method (missing previews and such in menu)
+  * Blt method (any stretched element missing in menu like previews and some buttons)
   * optimize text drawing in menu
   * improve renderer to run at higher FPS than 60 if possible
   * render at lower fps when window inctive
   * force the games to draw while inactive in windowed mode
-  * fix complete lockup on Windows XP
+  * video mode listing support
