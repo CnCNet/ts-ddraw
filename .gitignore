@@ -1,1 +1,1 @@
-ddraw.dll
+ddraw.dll ddraw.rc ddraw.rc.o
