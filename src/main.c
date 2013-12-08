@@ -39,6 +39,12 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_TRACE", buf, sizeof buf);
     if (buf[0]) TRACE = 1;
+
+    if (TRACE)
+    {
+        freopen("stdout.txt", "w", stdout);
+        setvbuf(stdout, NULL, _IONBF, 0);
+    }
 #endif
     dprintf("DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
 
