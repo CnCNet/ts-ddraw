@@ -28,6 +28,7 @@ IDirectDrawImpl *IDirectDrawImpl_construct()
     this->dd = this;
     dprintf("IDirectDraw::construct() -> %p\n", this);
     this->ref++;
+    timeBeginPeriod(1);
     return this;
 }
 
@@ -62,6 +63,7 @@ static ULONG __stdcall _Release(IDirectDrawImpl *this)
     {
         if (this->ref == 0)
         {
+            timeEndPeriod(1);
             free(this);
         }
     }

@@ -45,7 +45,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     while (this->thread)
     {
-        tick_start = GetTickCount();
+        tick_start = timeGetTime();
 
         EnterCriticalSection(&this->lock);
 
@@ -54,7 +54,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         LeaveCriticalSection(&this->lock);
 
-        tick_end = GetTickCount();
+        tick_end = timeGetTime();
 
         if (tick_end - tick_start < frame_len)
         {
