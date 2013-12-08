@@ -15,7 +15,7 @@ debug:
 release:
 	sed 's/__REV__/$(REV)/g' ddraw.rc.in > ddraw.rc
 	$(WINDRES) -J rc ddraw.rc ddraw.rc.o
-	$(CC) $(CFLAGS) -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.def ddraw.rc.o $(LIBS)
+	$(CC) $(CFLAGS) -nostdlib -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.def ddraw.rc.o $(LIBS) -lkernel32 -luser32 -lmsvcrt
 	$(STRIP) -s ddraw.dll
 
 clean:
