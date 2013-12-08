@@ -428,9 +428,16 @@ HRESULT __stdcall _GetPalette(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWPALETTE 
     return DD_OK;
 }
 
-HRESULT __stdcall _GetPixelFormat(IDirectDrawSurfaceImpl *this, LPDDPIXELFORMAT a)
+HRESULT __stdcall _GetPixelFormat(IDirectDrawSurfaceImpl *this, LPDDPIXELFORMAT lpDDPixelFormat)
 {
-    dprintf("IDirectDrawSurface::GetPixelFormat(this=%p, ...)\n", this);
+    dprintf("IDirectDrawSurface::GetPixelFormat(this=%p, lpDDPixelFormat=%p)\n", this, lpDDPixelFormat);
+
+    lpDDPixelFormat->dwFlags = DDPF_RGB;
+    lpDDPixelFormat->dwRGBBitCount = this->bpp;
+    lpDDPixelFormat->dwRBitMask = 0x7C00;
+    lpDDPixelFormat->dwGBitMask = 0x03E0;
+    lpDDPixelFormat->dwBBitMask = 0x001F;
+
     return DD_OK;
 }
 
