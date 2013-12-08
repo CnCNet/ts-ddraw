@@ -49,7 +49,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         EnterCriticalSection(&this->lock);
 
-        SetDIBits(this->hDC, this->bitmap, 0, this->height, this->surface, this->bmi, DIB_RGB_COLORS);
         BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
         EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
 
@@ -116,16 +115,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         this->bmi->bmiHeader.biBitCount = this->bpp;
         this->bmi->bmiHeader.biCompression = BI_RGB;
 
-        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
-        {
-            this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
-        }
-        else
-        {
-            this->surface = calloc(1, this->lPitch * this->height * this->lXPitch);
-            this->bitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
-        }
-
+        this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
         SelectObject(this->hDC, this->bitmap);
     }
 
@@ -187,10 +177,6 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             dprintf("Renderer stopped.\n");
         }
 
-        if (!(this->dwCaps & DDSCAPS_PRIMARYSURFACE))
-        {
-            free(this->surface);
-        }
         free(this->overlay);
         DeleteCriticalSection(&this->lock);
         DeleteObject(this->bitmap);
