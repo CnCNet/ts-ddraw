@@ -64,6 +64,7 @@ struct IDirectDrawImpl
 
     int ref;
 
+    DWORD dwFlags;
     HWND hWnd;
     HDC hDC;
     int width;

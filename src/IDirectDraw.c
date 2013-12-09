@@ -344,15 +344,16 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         this->height = height;
         this->bpp = bpp;
 
-        this->winMode.dmSize = sizeof(DEVMODE);
-        this->winMode.dmDriverExtra = 0;
-
-        if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &this->winMode) == FALSE)
+        if (this->winMode.dmSize == 0)
         {
-            return DDERR_INVALIDMODE;
-        }
+            this->winMode.dmSize = sizeof(DEVMODE);
+            this->winMode.dmDriverExtra = 0;
 
-        //this->winMode.dmFields = DM_BITSPERPEL|DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFLAGS|DM_DISPLAYFREQUENCY|DM_POSITION;
+            if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &this->winMode) == FALSE)
+            {
+                return DDERR_INVALIDMODE;
+            }
+        }
 
         PIXELFORMATDESCRIPTOR pfd;
 
@@ -395,16 +396,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch(uMsg)
     {
         case WM_ACTIVATE:
-            if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
+            if (this->dwFlags & DDSCL_FULLSCREEN)
             {
-                ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
+                if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
+                {
+                    ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
+                }
+                else if (wParam == WA_INACTIVE)
+                {
+                    ChangeDisplaySettings(&this->winMode, 0);
+                    ShowWindow(this->hWnd, SW_MINIMIZE);
+                }
+                return 0;
             }
-            else if (wParam == WA_INACTIVE)
-            {
-                ChangeDisplaySettings(&this->winMode, 0);
-                ShowWindow(this->hWnd, SW_MINIMIZE);
-            }
-            return 0;
 
         /* make windowed games close on X */
         case WM_SYSCOMMAND:
@@ -416,6 +420,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         /* don't ever tell they lose focus for real so they keep drawing */
         case WM_ACTIVATEAPP:
+            if (this->dwFlags & DDSCL_FULLSCREEN)
             {
                 return 0;
             }
@@ -442,6 +447,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
         }
         else
         {
+            this->dwFlags = dwFlags;
             this->hWnd = hWnd;
             this->hDC = GetDC(this->hWnd);
             this->wndProc = (LRESULT CALLBACK (*)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
