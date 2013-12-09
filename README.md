@@ -6,7 +6,6 @@ Rewrite of cnc-ddraw for Tiberian Sun and Red Alert 2. Target audience are Windo
 TODO
 ----
 
-  * alt-tab (minimize on lost focus, restore on refocus)
   * windowed mode
   * Blt method (any stretched element missing in menu like previews and some buttons)
   * optimize text drawing in menu

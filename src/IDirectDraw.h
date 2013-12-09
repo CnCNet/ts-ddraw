@@ -59,6 +59,8 @@ struct IDirectDrawImpl
     IDirectDraw *real;
     IDirectDrawImpl* dd;
     DEVMODE winMode;
+    DEVMODE mode;
+    LRESULT CALLBACK (*wndProc)(HWND, UINT, WPARAM, LPARAM);
 
     int ref;
 

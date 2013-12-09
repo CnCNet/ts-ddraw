@@ -20,6 +20,7 @@
 #include "IDirectDrawSurface.h"
 
 static IDirectDrawImplVtbl Vtbl;
+static IDirectDrawImpl *ddraw;
 
 IDirectDrawImpl *IDirectDrawImpl_construct()
 {
@@ -29,6 +30,7 @@ IDirectDrawImpl *IDirectDrawImpl_construct()
     dprintf("IDirectDraw::construct() -> %p\n", this);
     this->ref++;
     timeBeginPeriod(1);
+    ddraw = this;
     return this;
 }
 
@@ -294,7 +296,6 @@ static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
     }
     else
     {
-        this->winMode.dmFields = DM_BITSPERPEL|DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFLAGS|DM_DISPLAYFREQUENCY|DM_POSITION;
         ChangeDisplaySettings(&this->winMode, 0);
     }
 
@@ -328,6 +329,8 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             return DDERR_INVALIDMODE;
         }
 
+        //this->winMode.dmFields = DM_BITSPERPEL|DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFLAGS|DM_DISPLAYFREQUENCY|DM_POSITION;
+
         PIXELFORMATDESCRIPTOR pfd;
 
         memset(&pfd, 0, sizeof(pfd));
@@ -345,18 +348,12 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 
         SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
 
-        DEVMODE mode;
-        memset(&mode, 0, sizeof(mode));
-        mode.dmSize = sizeof(mode);
-        mode.dmFields = DM_PELSWIDTH|DM_PELSHEIGHT;
-        mode.dmPelsWidth = this->width;
-        mode.dmPelsHeight = this->height;
-        /*
-        mode.dmFields |= DM_BITSPERPEL;
-        mode.dmBitsPerPel = this->bpp;
-        */
+        this->mode.dmSize = sizeof(this->mode);
+        this->mode.dmFields = DM_PELSWIDTH|DM_PELSHEIGHT;
+        this->mode.dmPelsWidth = this->width;
+        this->mode.dmPelsHeight = this->height;
 
-        if (ChangeDisplaySettings(&mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+        if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
             dprintf("    mode change failed!\n");
             return DDERR_INVALIDMODE;
@@ -366,6 +363,42 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
     dprintf("IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d) -> %08X\n", this, (int)width, (int)height, (int)bpp, (int)ret);
     LEAVE;
     return ret;
+}
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    IDirectDrawImpl *this = ddraw;
+
+    switch(uMsg)
+    {
+        case WM_ACTIVATE:
+            if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
+            {
+                ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
+            }
+            else if (wParam == WA_INACTIVE)
+            {
+                ChangeDisplaySettings(&this->winMode, 0);
+                ShowWindow(this->hWnd, SW_MINIMIZE);
+            }
+            return 0;
+
+        /* make windowed games close on X */
+        case WM_SYSCOMMAND:
+            if (wParam == SC_CLOSE)
+            {
+                exit(0);
+            }
+            break;
+
+        /* don't ever tell they lose focus for real so they keep drawing */
+        case WM_ACTIVATEAPP:
+            {
+                return 0;
+            }
+    }
+
+    return this->wndProc(hWnd, uMsg, wParam, lParam);
 }
 
 static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, DWORD dwFlags)
@@ -388,6 +421,9 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
         {
             this->hWnd = hWnd;
             this->hDC = GetDC(this->hWnd);
+            this->wndProc = (LRESULT CALLBACK (*)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
+
+            SetWindowLong(this->hWnd, GWL_WNDPROC, (LONG)WndProc);
 
             PIXELFORMATDESCRIPTOR pfd;
 
