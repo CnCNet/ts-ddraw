@@ -145,11 +145,34 @@ static HRESULT __stdcall _DuplicateSurface(IDirectDrawImpl *this, LPDIRECTDRAWSU
 
 static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags, LPDDSURFACEDESC lpDDSurfaceDesc, LPVOID lpContext, LPDDENUMMODESCALLBACK lpEnumModesCallback)
 {
-    HRESULT ret = DDERR_UNSUPPORTED;
+    HRESULT ret = DD_OK;
 
     if (PROXY)
     {
         ret = IDirectDraw_EnumDisplayModes(this->real, dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback);
+    }
+    else
+    {
+        DEVMODE mode;
+        mode.dmSize = sizeof(mode);
+
+        int i = 0;
+        while (EnumDisplaySettings(NULL, i, &mode))
+        {
+            DDSURFACEDESC desc;
+            memset(&desc, 0, sizeof(desc));
+            desc.dwSize = sizeof(desc);
+            desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_REFRESHRATE;
+            desc.dwWidth = mode.dmPelsWidth;
+            desc.dwHeight = mode.dmPelsHeight;
+            desc.dwRefreshRate = mode.dmDisplayFrequency;
+            desc.ddpfPixelFormat.dwSize = sizeof(desc.ddpfPixelFormat);
+            desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
+            desc.ddpfPixelFormat.dwRGBBitCount = mode.dmBitsPerPel;
+
+            lpEnumModesCallback(&desc, lpContext);
+            i++;
+        }
     }
 
     dprintf("IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p) -> %08X\n", this, (int)dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback, (int)ret);

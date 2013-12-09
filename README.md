@@ -12,4 +12,3 @@ TODO
   * improve renderer to run at higher FPS than 60 if possible
   * render at lower fps when window inctive
   * force the games to draw while inactive in windowed mode
-  * video mode listing support
