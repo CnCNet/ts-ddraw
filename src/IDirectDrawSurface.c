@@ -74,14 +74,23 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->bpp = this->dd->bpp;
     this->dwFlags = lpDDSurfaceDesc->dwFlags;
 
+    if (lpDDSurfaceDesc->dwWidth && lpDDSurfaceDesc->dwHeight)
+    {
+        this->width = lpDDSurfaceDesc->dwWidth;
+        this->height = lpDDSurfaceDesc->dwHeight;
+    }
+    else
+    {
+        this->width = this->dd->screenWidth;
+        this->height = this->dd->screenHeight;
+    }
+
     if (lpDDSurfaceDesc->dwFlags & DDSD_CAPS)
     {
         this->dwCaps = lpDDSurfaceDesc->ddsCaps.dwCaps;
 
         if (lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
-            this->width = this->dd->screenWidth;
-            this->height = this->dd->screenHeight;
             this->dwCaps |= DDSCAPS_FRONTBUFFER;
         }
 
@@ -92,32 +101,23 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         }
     }
 
-    if (!(lpDDSurfaceDesc->dwFlags & DDSD_CAPS) || !(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) )
-    {
-        this->width = lpDDSurfaceDesc->dwWidth;
-        this->height = lpDDSurfaceDesc->dwHeight;
-    }
+    this->lXPitch = this->bpp / 8;
+    this->lPitch = this->width * this->lXPitch;
 
-    if (this->width && this->height)
-    {
-        this->lXPitch = this->bpp / 8;
-        this->lPitch = this->width * this->lXPitch;
+    this->hDC = CreateCompatibleDC(this->dd->hDC);
 
-        this->hDC = CreateCompatibleDC(this->dd->hDC);
+    this->overlay = calloc(1, this->lPitch * this->height * this->lXPitch);
 
-        this->overlay = calloc(1, this->lPitch * this->height * this->lXPitch);
+    this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * this->height * this->lXPitch));
+    this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
+    this->bmi->bmiHeader.biWidth = this->width;
+    this->bmi->bmiHeader.biHeight = -this->height;
+    this->bmi->bmiHeader.biPlanes = 1;
+    this->bmi->bmiHeader.biBitCount = this->bpp;
+    this->bmi->bmiHeader.biCompression = BI_RGB;
 
-        this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * this->height * this->lXPitch));
-        this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
-        this->bmi->bmiHeader.biWidth = this->width;
-        this->bmi->bmiHeader.biHeight = -this->height;
-        this->bmi->bmiHeader.biPlanes = 1;
-        this->bmi->bmiHeader.biBitCount = this->bpp;
-        this->bmi->bmiHeader.biCompression = BI_RGB;
-
-        this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
-        SelectObject(this->hDC, this->bitmap);
-    }
+    this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
+    SelectObject(this->hDC, this->bitmap);
 
     InitializeCriticalSection(&this->lock);
 
@@ -214,43 +214,24 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     HRESULT ret = DD_OK;
     IDirectDrawSurfaceImpl *srcImpl = (IDirectDrawSurfaceImpl *)lpDDSrcSurface;
 
-#if 0
-    // consistently fail this test to get consistent debug output for real and emul
-    if (lpDDBltFx)
-        return ret;
-#endif
-
     if (PROXY)
     {
         ret = IDirectDrawSurface_Blt(this->real, lpDestRect, lpDDSrcSurface, lpSrcRect, dwFlags, lpDDBltFx);
     }
     else
     {
-#if 0
-        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        if (lpDestRect && lpSrcRect && lpDestRect->right <= this->width && lpDestRect->bottom <= this->height)
         {
             EnterCriticalSection(&this->lock);
-        }
-#endif
 
-#if 0
-        if (lpDestRect && lpSrcRect)
-        {
-            for (int x = 0; x < lpDestRect->right - lpDestRect->left; x++) {
-                for (int y = 0; y < lpDestRect->bottom - lpDestRect->top; y++) {
+            for (int x = 0; x < lpSrcRect->right - lpSrcRect->left; x++) {
+                for (int y = 0; y < lpSrcRect->bottom - lpSrcRect->top; y++) {
                     this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = srcImpl->surface[x + lpSrcRect->left + (srcImpl->width * (y + lpSrcRect->top))];
                 }
             }
-        }
-#endif
 
-#if 0
-        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
-        {
             LeaveCriticalSection(&this->lock);
-            SetEvent(this->frame);
         }
-#endif
     }
 
     dprintf("IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%d, lpDDBltFx=%p) -> %08X\n", this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);

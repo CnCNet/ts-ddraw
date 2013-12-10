@@ -6,9 +6,9 @@ Rewrite of cnc-ddraw for Tiberian Sun and Red Alert 2. Target audience are Windo
 TODO
 ----
 
-  * windowed mode
-  * Blt method (any stretched element missing in menu like previews and some buttons)
+  * stretching in Blt method
+  * fix background clearing in windowed mode, related to Blt I think
   * optimize text drawing in menu
   * improve renderer to run at higher FPS than 60 if possible
   * render at lower fps when window inctive
-  * force the games to draw while inactive in windowed mode
+  * try to fix window tracking in menu if possible
