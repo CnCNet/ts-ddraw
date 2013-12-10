@@ -410,6 +410,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 return 0;
             }
 
+        case WM_SIZE:
+        case WM_SIZING:
+        case WM_MOVE:
+        case WM_MOVING:
+            {
+                POINT p = { 0, 0 };
+                ClientToScreen(this->dd->hWnd, &p);
+                GetClientRect(this->dd->hWnd, &this->winRect);
+                OffsetRect(&this->winRect, p.x, p.y);
+                break;
+            }
+
+        /* don't ever tell they lose focus for real so they keep drawing */
+        case WM_ACTIVATEAPP:
+            if (!(this->dwFlags & DDSCL_FULLSCREEN))
+            {
+                return 0;
+            }
+
         /* make windowed games close on X */
         case WM_SYSCOMMAND:
             if (wParam == SC_CLOSE)
@@ -418,12 +437,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
 
-        /* don't ever tell they lose focus for real so they keep drawing */
-        case WM_ACTIVATEAPP:
-            if (this->dwFlags & DDSCL_FULLSCREEN)
-            {
-                return 0;
-            }
     }
 
     return this->wndProc(hWnd, uMsg, wParam, lParam);
@@ -447,6 +460,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
         }
         else
         {
+            this->bpp = 16;
             this->dwFlags = dwFlags;
             this->hWnd = hWnd;
             this->hDC = GetDC(this->hWnd);
@@ -461,25 +475,24 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             pfd.nVersion = 1;
             pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
             pfd.iPixelType = PFD_TYPE_RGBA;
-            pfd.cColorBits = 16;
+            pfd.cColorBits = this->bpp;
             pfd.iLayerType = PFD_MAIN_PLANE;
             if (!SetPixelFormat( this->hDC, ChoosePixelFormat( this->hDC, &pfd ), &pfd ))
             {
                 dprintf("SetPixelFormat failed!\n");
                 ret = DDERR_UNSUPPORTED;
             }
-            else
+
+            if (this->screenWidth == 0)
             {
-                RECT rc;
-                GetClientRect(hWnd, &rc);
-                this->width = rc.right;
-                this->height = rc.bottom;
-                this->bpp = 16;
+                this->screenWidth = GetSystemMetrics (SM_CXSCREEN);
+                this->screenHeight = GetSystemMetrics (SM_CYSCREEN);
             }
         }
     }
 
     dprintf("IDirectDraw::SetCooperativeLevel(this=%p, hWnd=%08X, dwFlags=%08X) -> %08X\n", this, (int)hWnd, (int)dwFlags, (int)ret);
+    dprintf("    screen = %dx%d\n", this->screenWidth, this->screenHeight);
     LEAVE;
     return ret;
 }

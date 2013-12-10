@@ -49,7 +49,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         EnterCriticalSection(&this->lock);
 
-        BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 0, 0, SRCCOPY);
+        BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
         EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
 
         LeaveCriticalSection(&this->lock);
@@ -80,8 +80,8 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
 
         if (lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)
         {
-            this->width = this->dd->width;
-            this->height = this->dd->height;
+            this->width = this->dd->screenWidth;
+            this->height = this->dd->screenHeight;
             this->dwCaps |= DDSCAPS_FRONTBUFFER;
         }
 

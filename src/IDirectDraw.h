@@ -61,6 +61,9 @@ struct IDirectDrawImpl
     DEVMODE winMode;
     DEVMODE mode;
     LRESULT CALLBACK (*wndProc)(HWND, UINT, WPARAM, LPARAM);
+    int screenWidth;
+    int screenHeight;
+    RECT winRect;
 
     int ref;
 
