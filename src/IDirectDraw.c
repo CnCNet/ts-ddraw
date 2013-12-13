@@ -360,7 +360,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         memset(&pfd, 0, sizeof(pfd));
         pfd.nSize = sizeof(pfd);
         pfd.nVersion = 1;
-        pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+        pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER;
         pfd.iPixelType = PFD_TYPE_RGBA;
         pfd.cColorBits = this->bpp;
         pfd.iLayerType = PFD_MAIN_PLANE;
@@ -478,7 +478,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             memset(&pfd, 0, sizeof(pfd));
             pfd.nSize = sizeof(pfd);
             pfd.nVersion = 1;
-            pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+            pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER;
             pfd.iPixelType = PFD_TYPE_RGBA;
             pfd.cColorBits = this->bpp;
             pfd.iLayerType = PFD_MAIN_PLANE;

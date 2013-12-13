@@ -18,24 +18,11 @@
 #include "IDirectDrawClipper.h"
 #include "IDirectDrawSurface.h"
 
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glext.h>
+
 static IDirectDrawSurfaceImplVtbl Vtbl;
-
-/* the TS hack itself */
-BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
-{
-    IDirectDrawSurfaceImpl *this = (IDirectDrawSurfaceImpl *)lParam;
-
-    HDC hDC = GetWindowDC(hWnd);
-
-    RECT size;
-    GetClientRect(hWnd, &size);
-
-    RECT pos;
-    GetWindowRect(hWnd, &pos);
-
-    BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
-    return FALSE;
-}
 
 DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 {
@@ -43,16 +30,37 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD tick_end = 0;
     DWORD frame_len = 1000.0f / 60;
 
+    HGLRC hRC = wglCreateContext(this->dd->hDC);
+    wglMakeCurrent(this->dd->hDC, hRC);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+
+    glViewport(0, 0, this->width, this->height);
+    glEnable(GL_TEXTURE_2D);
+
     while (this->thread)
     {
         tick_start = timeGetTime();
 
         EnterCriticalSection(&this->lock);
 
-        BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
-        EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
 
         LeaveCriticalSection(&this->lock);
+
+        glBegin(GL_TRIANGLE_FAN);
+
+        glTexCoord2f(0,0); glVertex2f(-1, 1);
+        glTexCoord2f(1,0); glVertex2f( 1, 1);
+        glTexCoord2f(1,1); glVertex2f( 1, -1);        
+        glTexCoord2f(0,1); glVertex2f(-1, -1);
+        glEnd();
+
+
+        SwapBuffers(this->dd->hDC);
 
         tick_end = timeGetTime();
 
@@ -61,6 +69,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             Sleep( frame_len - (tick_end - tick_start) );
         }
     }
+
+    wglMakeCurrent(NULL, NULL);
+    wglDeleteContext(hRC);
 
     return 0;
 }
@@ -291,10 +302,9 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
         lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
         lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
-
 
         lpDDSurfaceDesc->dwFlags = 0x0000100F;
         lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
@@ -466,11 +476,11 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
         lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
         lpDDSurfaceDesc->dwFlags = 0x0000100F;
         lpDDSurfaceDesc->ddsCaps.dwCaps = 0x10004000;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
         lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
 
         EnterCriticalSection(&this->lock);
