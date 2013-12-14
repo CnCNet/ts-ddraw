@@ -407,7 +407,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     ChangeDisplaySettings(&this->winMode, 0);
                     ShowWindow(this->hWnd, SW_MINIMIZE);
                 }
-                return 0;
+            }
+            else
+            {
+                wParam = WA_ACTIVE;
             }
 
         case WM_SIZE:
@@ -426,7 +429,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_ACTIVATEAPP:
             if (!(this->dwFlags & DDSCL_FULLSCREEN))
             {
-                return 0;
+                wParam = TRUE;
+                lParam = 0;
+                break;
             }
 
         /* make windowed games close on X */
