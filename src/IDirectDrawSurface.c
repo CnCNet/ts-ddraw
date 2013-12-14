@@ -38,7 +38,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 
-    glViewport(0, 0, this->width, this->height);
     glEnable(GL_TEXTURE_2D);
 
     while (this->thread)
@@ -60,6 +59,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         glEnd();
 
 
+        glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
         SwapBuffers(this->dd->hDC);
 
         tick_end = timeGetTime();
