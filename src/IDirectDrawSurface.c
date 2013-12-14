@@ -115,11 +115,10 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->lXPitch = this->bpp / 8;
     this->lPitch = this->width * this->lXPitch;
 
-    this->hDC = CreateCompatibleDC(this->dd->hDC);
+    this->surface = calloc(1, this->lPitch * this->height);
+    this->overlay = calloc(1, this->lPitch * this->height);
 
-    this->overlay = calloc(1, this->lPitch * this->height * this->lXPitch);
-
-    this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * this->height * this->lXPitch));
+    this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * this->height));
     this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
     this->bmi->bmiHeader.biWidth = this->width;
     this->bmi->bmiHeader.biHeight = -this->height;
@@ -127,15 +126,11 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->bmi->bmiHeader.biBitCount = this->bpp;
     this->bmi->bmiHeader.biCompression = BI_RGB;
 
-    this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
-    SelectObject(this->hDC, this->bitmap);
-
     InitializeCriticalSection(&this->lock);
 
     if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
     {
         dprintf("Starting renderer.\n");
-        this->frame = CreateEvent(NULL, TRUE, FALSE, NULL);
         this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
         if (SetThreadPriority(this->thread, THREAD_PRIORITY_ABOVE_NORMAL))
         {
@@ -188,10 +183,9 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             dprintf("Renderer stopped.\n");
         }
 
+        free(this->surface);
         free(this->overlay);
         DeleteCriticalSection(&this->lock);
-        DeleteObject(this->bitmap);
-        DeleteDC(this->hDC);
         if (this->overlayBitmap)
         {
             DeleteObject(this->overlayBitmap);
