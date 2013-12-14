@@ -28,7 +28,12 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 {
     DWORD tick_start = 0;
     DWORD tick_end = 0;
-    DWORD frame_len = 1000.0f / 60;
+    DWORD target_fps = 60;
+    DWORD frame_len = 1000.0f / target_fps;
+#if _DEBUG
+    double frame_time = 0, real_time = timeGetTime();
+    int frames = 0;
+#endif
 
     HGLRC hRC = wglCreateContext(this->dd->hDC);
     wglMakeCurrent(this->dd->hDC, hRC);
@@ -58,11 +63,22 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         glTexCoord2f(0,1); glVertex2f(-1, -1);
         glEnd();
 
-
         glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
         SwapBuffers(this->dd->hDC);
 
         tick_end = timeGetTime();
+
+#if _DEBUG
+        frame_time += (tick_end - tick_start);
+        frames++;
+        if (frames >= target_fps)
+        {
+            printf("Timed FPS: %.2f\n", 1000.0f / (frame_time / frames));
+            printf("Real  FPS: %.2f\n", 1000.0f / ((tick_end - real_time) / frames));
+            frame_time = frames = 0;
+            real_time = tick_end;
+        }
+#endif
 
         if (tick_end - tick_start < frame_len)
         {
