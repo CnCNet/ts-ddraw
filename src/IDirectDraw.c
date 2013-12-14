@@ -382,6 +382,11 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             dprintf("    mode change failed!\n");
             return DDERR_INVALIDMODE;
         }
+
+        POINT p = { 0, 0 };
+        ClientToScreen(this->dd->hWnd, &p);
+        GetClientRect(this->dd->hWnd, &this->winRect);
+        OffsetRect(&this->winRect, p.x, p.y);
     }
 
     dprintf("IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d) -> %08X\n", this, (int)width, (int)height, (int)bpp, (int)ret);
