@@ -159,18 +159,22 @@ static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags,
         int i = 0;
         while (EnumDisplaySettings(NULL, i, &mode))
         {
-            DDSURFACEDESC desc;
-            memset(&desc, 0, sizeof(desc));
-            desc.dwSize = sizeof(desc);
-            desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_REFRESHRATE;
-            desc.dwWidth = mode.dmPelsWidth;
-            desc.dwHeight = mode.dmPelsHeight;
-            desc.dwRefreshRate = mode.dmDisplayFrequency;
-            desc.ddpfPixelFormat.dwSize = sizeof(desc.ddpfPixelFormat);
-            desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
-            desc.ddpfPixelFormat.dwRGBBitCount = mode.dmBitsPerPel;
+            // enumerate desktop bpp modes
+            if (mode.dmBitsPerPel == this->winMode.dmBitsPerPel)
+            {
+                DDSURFACEDESC desc;
+                memset(&desc, 0, sizeof(desc));
+                desc.dwSize = sizeof(desc);
+                desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_REFRESHRATE|DDSD_PIXELFORMAT;
+                desc.dwWidth = mode.dmPelsWidth;
+                desc.dwHeight = mode.dmPelsHeight;
+                desc.dwRefreshRate = mode.dmDisplayFrequency;
+                desc.ddpfPixelFormat.dwSize = sizeof(desc.ddpfPixelFormat);
+                desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
+                desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
 
-            lpEnumModesCallback(&desc, lpContext);
+                lpEnumModesCallback(&desc, lpContext);
+            }
             i++;
         }
     }
@@ -344,17 +348,6 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         this->height = height;
         this->bpp = bpp;
 
-        if (this->winMode.dmSize == 0)
-        {
-            this->winMode.dmSize = sizeof(DEVMODE);
-            this->winMode.dmDriverExtra = 0;
-
-            if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &this->winMode) == FALSE)
-            {
-                return DDERR_INVALIDMODE;
-            }
-        }
-
         PIXELFORMATDESCRIPTOR pfd;
 
         memset(&pfd, 0, sizeof(pfd));
@@ -497,6 +490,20 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             {
                 this->screenWidth = GetSystemMetrics (SM_CXSCREEN);
                 this->screenHeight = GetSystemMetrics (SM_CYSCREEN);
+            }
+
+            if (this->winMode.dmSize == 0)
+            {
+                this->winMode.dmSize = sizeof(DEVMODE);
+                this->winMode.dmDriverExtra = 0;
+
+                if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &this->winMode) == FALSE)
+                {
+                    return DDERR_INVALIDMODE;
+                }
+
+                this->screenWidth = this->winMode.dmPelsWidth;
+                this->screenHeight = this->winMode.dmPelsHeight;
             }
         }
     }
