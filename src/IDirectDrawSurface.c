@@ -38,7 +38,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     HGLRC hRC = wglCreateContext(this->dd->hDC);
     wglMakeCurrent(this->dd->hDC, hRC);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->renderSurface);
 
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
@@ -49,11 +49,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     {
         tick_start = timeGetTime();
 
-        EnterCriticalSection(&this->lock);
-
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
-
-        LeaveCriticalSection(&this->lock);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->renderSurface);
 
         glBegin(GL_TRIANGLE_FAN);
 
@@ -131,7 +127,6 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->lXPitch = this->bpp / 8;
     this->lPitch = this->width * this->lXPitch;
 
-    this->surface = calloc(1, this->lPitch * this->height);
     this->overlay = calloc(1, this->lPitch * this->height);
 
     this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * this->height));
@@ -142,8 +137,6 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->bmi->bmiHeader.biBitCount = this->bpp;
     this->bmi->bmiHeader.biCompression = BI_RGB;
 
-    InitializeCriticalSection(&this->lock);
-
     if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
     {
         dprintf("Starting renderer.\n");
@@ -152,7 +145,29 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         {
             dprintf("Renderer set to higher priority.\n");
         }
+
+        this->hfm = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, this->lPitch * this->height, NULL);
+        this->surface = MapViewOfFile(this->hfm, FILE_MAP_WRITE, 0, 0, this->lPitch * this->height);
+        this->renderSurface = MapViewOfFile(this->hfm, FILE_MAP_WRITE, 0, 0, this->lPitch * this->height);
     }
+    else
+    {
+        this->surface = calloc(1, this->lPitch * this->height);
+    }
+
+    this->desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
+    this->desc.dwWidth = this->width;
+    this->desc.dwHeight = this->height;
+    this->desc.lPitch = this->lPitch;
+    this->desc.ddpfPixelFormat.dwSize = 32;
+    this->desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
+    this->desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
+    this->desc.ddpfPixelFormat.dwRBitMask = 0xF800;
+    this->desc.ddpfPixelFormat.dwGBitMask = 0x07E0;
+    this->desc.ddpfPixelFormat.dwBBitMask = 0x001F;
+
+    this->desc.dwFlags = 0x0000100F;
+    this->desc.ddsCaps.dwCaps = this->dwCaps;
 
     dprintf("IDirectDrawSurface::construct() -> %p\n", this);
     dump_ddsurfacedesc(lpDDSurfaceDesc);
@@ -199,9 +214,18 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             dprintf("Renderer stopped.\n");
         }
 
-        free(this->surface);
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        {
+            CloseHandle(this->hfm);
+            UnmapViewOfFile(this->surface);
+            UnmapViewOfFile(this->renderSurface);
+        }
+        else
+        {
+            free(this->surface);
+        }
+
         free(this->overlay);
-        DeleteCriticalSection(&this->lock);
         if (this->overlayBitmap)
         {
             DeleteObject(this->overlayBitmap);
@@ -243,15 +267,16 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     {
         if (lpDestRect && lpSrcRect && lpDestRect->right <= this->width && lpDestRect->bottom <= this->height)
         {
-            EnterCriticalSection(&this->lock);
-
             for (int x = 0; x < lpSrcRect->right - lpSrcRect->left; x++) {
                 for (int y = 0; y < lpSrcRect->bottom - lpSrcRect->top; y++) {
                     this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = srcImpl->surface[x + lpSrcRect->left + (srcImpl->width * (y + lpSrcRect->top))];
                 }
             }
+        }
 
-            LeaveCriticalSection(&this->lock);
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        {
+            FlushViewOfFile(this->surface, this->lPitch * this->height);
         }
     }
 
@@ -305,19 +330,7 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
     }
     else
     {
-        lpDDSurfaceDesc->dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-        lpDDSurfaceDesc->dwWidth = this->width;
-        lpDDSurfaceDesc->dwHeight = this->height;
-        lpDDSurfaceDesc->lPitch = this->lPitch;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
-
-        lpDDSurfaceDesc->dwFlags = 0x0000100F;
-        lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
+        memcpy(lpDDSurfaceDesc, &this->desc, sizeof(*lpDDSurfaceDesc));
     }
 
     dprintf("IDirectDrawSurface::GetSurfaceDesc(this=%p, lpDDSurfaceDesc=%p) -> %08X\n", this, lpDDSurfaceDesc, (int)ret);
@@ -402,7 +415,6 @@ HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
             this->overlayBitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
         }
 
-        EnterCriticalSection(&this->lock);
         *lphDC = this->overlayDC;
         SelectObject(this->overlayDC, this->overlayBitmap);
     }
@@ -433,11 +445,7 @@ HRESULT __stdcall _GetPixelFormat(IDirectDrawSurfaceImpl *this, LPDDPIXELFORMAT 
 {
     dprintf("IDirectDrawSurface::GetPixelFormat(this=%p, lpDDPixelFormat=%p)\n", this, lpDDPixelFormat);
 
-    lpDDPixelFormat->dwFlags = DDPF_RGB;
-    lpDDPixelFormat->dwRGBBitCount = this->bpp;
-    lpDDPixelFormat->dwRBitMask = 0x7C00;
-    lpDDPixelFormat->dwGBitMask = 0x03E0;
-    lpDDPixelFormat->dwBBitMask = 0x001F;
+    memcpy(lpDDPixelFormat, &this->desc.ddpfPixelFormat, sizeof(*lpDDPixelFormat));
 
     return DD_OK;
 }
@@ -478,22 +486,9 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
     }
     else
     {
-        lpDDSurfaceDesc->dwFlags |= DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-        lpDDSurfaceDesc->dwWidth = this->width;
-        lpDDSurfaceDesc->dwHeight = this->height;
-        lpDDSurfaceDesc->lPitch = this->lPitch;
+        memcpy(lpDDSurfaceDesc, &this->desc, sizeof(*lpDDSurfaceDesc));
+        lpDDSurfaceDesc->dwFlags |= DDSD_LPSURFACE;
         lpDDSurfaceDesc->lpSurface = this->surface;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
-        lpDDSurfaceDesc->dwFlags = 0x0000100F;
-        lpDDSurfaceDesc->ddsCaps.dwCaps = 0x10004000;
-        lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
-
-        EnterCriticalSection(&this->lock);
     }
 
     dprintf("IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n", this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent, (int)ret);
@@ -528,7 +523,6 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
 
         RECT rc = { 0, 0, this->width, this->height };
         FillRect(this->overlayDC, &rc, CreateSolidBrush(RGB(0,0,0)));
-        LeaveCriticalSection(&this->lock);
     }
 
     dprintf("IDirectDrawSurface::ReleaseDC(this=%p, hDC=%08X) -> %08X\n", this, (int)hDC, (int)ret);
@@ -589,7 +583,10 @@ static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
     }
     else
     {
-        LeaveCriticalSection(&this->lock);
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
+        {
+            FlushViewOfFile(this->surface, this->lPitch * this->height);
+        }
     }
 
     dprintf("IDirectDrawSurface::Unlock(this=%p, lpRect=%p) -> %08X\n", this, lpRect, (int)ret);

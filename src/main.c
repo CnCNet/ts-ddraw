@@ -54,9 +54,6 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
 #endif
     dprintf("DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
 
-    // unfortunately necessary to avoid random access violations
-    SetProcessAffinityMask(GetCurrentProcess(), 1);
-
     IDirectDrawImpl *ddraw = IDirectDrawImpl_construct();
 
 #ifdef _DEBUG
