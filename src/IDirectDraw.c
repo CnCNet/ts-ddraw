@@ -505,6 +505,11 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
                 this->screenWidth = this->winMode.dmPelsWidth;
                 this->screenHeight = this->winMode.dmPelsHeight;
             }
+
+            POINT p = { 0, 0 };
+            ClientToScreen(this->dd->hWnd, &p);
+            GetClientRect(this->dd->hWnd, &this->winRect);
+            OffsetRect(&this->winRect, p.x, p.y);
         }
     }
 

@@ -24,6 +24,31 @@
 
 static IDirectDrawSurfaceImplVtbl Vtbl;
 
+/* the TS hack itself */
+BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
+{
+    IDirectDrawSurfaceImpl *this = (IDirectDrawSurfaceImpl *)lParam;
+
+    HDC hDC = GetWindowDC(hWnd);
+
+    RECT size;
+    GetClientRect(hWnd, &size);
+
+    RECT pos;
+    GetWindowRect(hWnd, &pos);
+
+    // FIXME: very inefficient
+    HDC bitmapDC = CreateCompatibleDC(hDC);
+    HBITMAP bitmap = CreateCompatibleBitmap(hDC, this->width, this->height);
+    SelectObject(bitmapDC, bitmap);
+    SetDIBits(bitmapDC, bitmap, 0, this->height, this->renderSurface, this->bmi, DIB_RGB_COLORS);
+    BitBlt(hDC, 0, 0, size.right, size.bottom, bitmapDC, pos.left, pos.top, SRCCOPY);
+    DeleteObject(bitmap);
+    DeleteDC(bitmapDC);
+
+    return FALSE;
+}
+
 DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 {
     DWORD tick_start = 0;
@@ -61,6 +86,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
         SwapBuffers(this->dd->hDC);
+        EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
 
         tick_end = timeGetTime();
 
@@ -127,15 +153,31 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->lXPitch = this->bpp / 8;
     this->lPitch = this->width * this->lXPitch;
 
-    this->overlay = calloc(1, this->lPitch * this->height);
+    this->desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
+    this->desc.dwWidth = this->width;
+    this->desc.dwHeight = this->height;
+    this->desc.lPitch = this->lPitch;
+    this->desc.ddpfPixelFormat.dwSize = 32;
+    this->desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
+    this->desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
+    this->desc.ddpfPixelFormat.dwRBitMask = 0xF800;
+    this->desc.ddpfPixelFormat.dwGBitMask = 0x07E0;
+    this->desc.ddpfPixelFormat.dwBBitMask = 0x001F;
 
-    this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * this->height));
-    this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
+    this->desc.dwFlags = 0x0000100F;
+    this->desc.ddsCaps.dwCaps = this->dwCaps;
+
+    this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 3));
+    this->bmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     this->bmi->bmiHeader.biWidth = this->width;
     this->bmi->bmiHeader.biHeight = -this->height;
     this->bmi->bmiHeader.biPlanes = 1;
     this->bmi->bmiHeader.biBitCount = this->bpp;
-    this->bmi->bmiHeader.biCompression = BI_RGB;
+    this->bmi->bmiHeader.biCompression = BI_BITFIELDS;
+
+    ((DWORD *)this->bmi->bmiColors)[0] = this->desc.ddpfPixelFormat.dwRBitMask;
+    ((DWORD *)this->bmi->bmiColors)[1] = this->desc.ddpfPixelFormat.dwGBitMask;
+    ((DWORD *)this->bmi->bmiColors)[2] = this->desc.ddpfPixelFormat.dwBBitMask;
 
     if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
     {
@@ -154,20 +196,6 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     {
         this->surface = calloc(1, this->lPitch * this->height);
     }
-
-    this->desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-    this->desc.dwWidth = this->width;
-    this->desc.dwHeight = this->height;
-    this->desc.lPitch = this->lPitch;
-    this->desc.ddpfPixelFormat.dwSize = 32;
-    this->desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
-    this->desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
-    this->desc.ddpfPixelFormat.dwRBitMask = 0xF800;
-    this->desc.ddpfPixelFormat.dwGBitMask = 0x07E0;
-    this->desc.ddpfPixelFormat.dwBBitMask = 0x001F;
-
-    this->desc.dwFlags = 0x0000100F;
-    this->desc.ddsCaps.dwCaps = this->dwCaps;
 
     dprintf("IDirectDrawSurface::construct() -> %p\n", this);
     dump_ddsurfacedesc(lpDDSurfaceDesc);
@@ -225,9 +253,9 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             free(this->surface);
         }
 
-        free(this->overlay);
         if (this->overlayBitmap)
         {
+            this->overlay = NULL;
             DeleteObject(this->overlayBitmap);
         }
         if (this->overlayDC)
@@ -412,7 +440,7 @@ HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
         if (!this->overlayDC)
         {
             this->overlayDC = CreateCompatibleDC(this->dd->hDC);
-            this->overlayBitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
+            this->overlayBitmap = CreateDIBSection(this->overlayDC, this->bmi, DIB_RGB_COLORS, (void **)&this->overlay, NULL, 0);
         }
 
         *lphDC = this->overlayDC;
@@ -508,8 +536,6 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
     }
     else
     {
-        GetDIBits(this->overlayDC, this->overlayBitmap, 0, this->height, this->overlay, this->bmi, DIB_RGB_COLORS);
-
         // FIXME: using black as magic transparency color
         for (int x = 0; x < this->width; x++) {
             for (int y = 0; y < this->height; y++) {
