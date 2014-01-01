@@ -329,9 +329,14 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
         if (lpDDSrcSurface)
         {
-            for (int x = 0; x < src.right - src.left; x++) {
-                for (int y = 0; y < src.bottom - src.top; y++) {
-                    this->surface[x + dst.left + (this->width * (y + dst.top))] = srcImpl->surface[x + src.left + (srcImpl->width * (y + src.top))];
+            int dst_w = dst.right - dst.left;
+            int dst_h = dst.bottom - dst.top;
+            float w_scale = (src.right - src.left) / (float)dst_w;
+            float h_scale = (src.bottom - src.top) / (float)dst_h;
+
+            for (int x = 0; x < dst_w; x++) {
+                for (int y = 0; y < dst_h; y++) {
+                    this->surface[x + dst.left + (this->width * (y + dst.top))] = srcImpl->surface[((unsigned int)(x * w_scale) + src.left + (srcImpl->width * ((unsigned int)(y * h_scale) + src.top)))];
                 }
             }
         }
