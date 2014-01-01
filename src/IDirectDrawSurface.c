@@ -222,9 +222,22 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     {
         if (dwFlags & DDBLT_COLORFILL)
         {
-            for (int x = 0; x < lpDestRect->right - lpDestRect->left; x++) {
-                for (int y = 0; y < lpDestRect->bottom - lpDestRect->top; y++) {
-                    this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = lpDDBltFx->dwFillColor;
+            if (lpDestRect)
+            {
+                for (int x = 0; x < lpDestRect->right - lpDestRect->left; x++) {
+                    for (int y = 0; y < lpDestRect->bottom - lpDestRect->top; y++) {
+                        this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = lpDDBltFx->dwFillColor;
+                    }
+                }
+            }
+            else
+            {
+                if (this->bpp == 16)
+                {
+                    WORD *p = (void *)this->surface;
+                    for (int i = 0; i < this->width * this->height; i++) {
+                        p[i] = lpDDBltFx->dwFillColor;
+                    }
                 }
             }
         }
