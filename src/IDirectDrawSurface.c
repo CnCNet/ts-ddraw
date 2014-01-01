@@ -220,6 +220,15 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     }
     else
     {
+        if (dwFlags & DDBLT_COLORFILL)
+        {
+            for (int x = 0; x < lpDestRect->right - lpDestRect->left; x++) {
+                for (int y = 0; y < lpDestRect->bottom - lpDestRect->top; y++) {
+                    this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = lpDDBltFx->dwFillColor;
+                }
+            }
+        }
+
         if (lpDestRect && lpSrcRect && lpDestRect->right <= this->width && lpDestRect->bottom <= this->height)
         {
             EnterCriticalSection(&this->lock);
@@ -235,6 +244,48 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     }
 
     dprintf("IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%d, lpDDBltFx=%p) -> %08X\n", this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
+
+    dprintf(" dwFlags:\n");
+
+    if (dwFlags & DDBLT_COLORFILL)
+    {
+        dprintf("  DDBLT_COLORFILL\n");
+    }
+
+    if (dwFlags & DDBLT_DDFX)
+    {
+        dprintf("  DDBLT_DDFX\n");
+    }
+
+    if (dwFlags & DDBLT_DDROPS)
+    {
+        dprintf("  DDBLT_DDDROPS\n");
+    }
+
+    if (dwFlags & DDBLT_DEPTHFILL)
+    {
+        dprintf("  DDBLT_DEPTHFILL\n");
+    }
+
+    if (dwFlags & DDBLT_KEYDESTOVERRIDE)
+    {
+        dprintf("  DDBLT_KEYDESTOVERRIDE\n");
+    }
+
+    if (dwFlags & DDBLT_KEYSRCOVERRIDE)
+    {
+        dprintf("  DDBLT_KEYSRCOVERRIDE\n");
+    }
+
+    if (dwFlags & DDBLT_ROP)
+    {
+        dprintf("  DDBLT_ROP\n");
+    }
+
+    if (dwFlags & DDBLT_ROTATIONANGLE)
+    {
+        dprintf("  DDBLT_ROTATIONANGLE\n");
+    }
 
     if (lpDestRect)
     {
