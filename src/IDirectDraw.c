@@ -380,6 +380,11 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         ClientToScreen(this->dd->hWnd, &p);
         GetClientRect(this->dd->hWnd, &this->winRect);
         OffsetRect(&this->winRect, p.x, p.y);
+
+        /* restrain the cursor to the game in fullscreen */
+        RECT rcClip;
+        GetWindowRect(this->hWnd, &rcClip);
+        ClipCursor(&rcClip);
     }
 
     dprintf("IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d) -> %08X\n", this, (int)width, (int)height, (int)bpp, (int)ret);
@@ -399,6 +404,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
                 {
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
+
+                    /* keep the cursor restrained after alt-tabbing */
+                    RECT rcClip;
+                    GetWindowRect(hWnd, &rcClip);
+                    ClipCursor(&rcClip);
                 }
                 else if (wParam == WA_INACTIVE)
                 {
