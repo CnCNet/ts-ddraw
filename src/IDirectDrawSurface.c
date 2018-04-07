@@ -249,11 +249,15 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
         if (dwFlags & DDBLT_COLORFILL)
         {
+            EnterCriticalSection(&this->lock);
+            
             for (int x = 0; x < dst.right - dst.left; x++) {
                 for (int y = 0; y < dst.bottom - dst.top; y++) {
                     this->surface[x + dst.left + (this->width * (y + dst.top))] = lpDDBltFx->dwFillColor;
                 }
             }
+            
+            LeaveCriticalSection(&this->lock);
         }
 
         if (lpDDSrcSurface)
