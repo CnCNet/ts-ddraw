@@ -420,6 +420,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 ClientToScreen(this->dd->hWnd, &p);
                 GetClientRect(this->dd->hWnd, &this->winRect);
                 OffsetRect(&this->winRect, p.x, p.y);
+                InvalidateRect(hWnd, NULL, TRUE); // forces TS and RA2 to redraw
                 break;
             }
 
