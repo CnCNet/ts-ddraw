@@ -443,14 +443,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 break;
             }
 
-        /* make windowed games close on X */
+        /* make windowed games close on X 
         case WM_SYSCOMMAND:
             if (wParam == SC_CLOSE)
             {
-                exit(0);
+                if (!this->wndProc(hWnd, uMsg, wParam, lParam))
+                    exit(0);
             }
             break;
-
+        */
     }
 
     return this->wndProc(hWnd, uMsg, wParam, lParam);

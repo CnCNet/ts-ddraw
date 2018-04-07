@@ -39,6 +39,8 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
 
 DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 {
+    Sleep(500);
+    
     DWORD tick_start = 0;
     DWORD tick_end = 0;
     DWORD frame_len = 1000.0f / 60;
