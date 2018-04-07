@@ -8,15 +8,10 @@ REV=$(shell sh -c 'git rev-parse --short @{0}')
 all: debug
 
 debug:
-	sed 's/__REV__/$(REV)+DEBUG/g' ddraw.rc.in > ddraw.rc
-	$(WINDRES) -J rc ddraw.rc ddraw.rc.o
-	$(CC) $(CFLAGS) -g -D_DEBUG -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.def ddraw.rc.o $(LIBS)
+	$(CC) $(CFLAGS) -g -D_DEBUG -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.def $(LIBS)
 
 release:
-	sed 's/__REV__/$(REV)/g' ddraw.rc.in > ddraw.rc
-	$(WINDRES) -J rc ddraw.rc ddraw.rc.o
-	$(CC) $(CFLAGS) -nostdlib -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.def ddraw.rc.o $(LIBS) -lkernel32 -luser32 -lmsvcrt
-	$(STRIP) -s ddraw.dll
+	$(CC) $(CFLAGS) -nostdlib -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.def $(LIBS) -lkernel32 -luser32 -lmsvcrt
 
 clean:
 	rm -f ddraw.dll ddraw.rc ddraw.rc.o

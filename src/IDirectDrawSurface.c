@@ -220,38 +220,50 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     }
     else
     {
+        RECT src = { 0, 0, srcImpl ? srcImpl->width : 0, srcImpl ? srcImpl->height : 0};
+        RECT dst = { 0, 0, this->width, this->height };
+
+        if (lpSrcRect)
+        {
+            memcpy(&src, lpSrcRect, sizeof(src));
+
+            if (src.right > srcImpl->width)
+                src.right = srcImpl->width;
+
+            if (src.bottom > srcImpl->height)
+                src.bottom = srcImpl->height;
+        }
+
+        if (lpDestRect)
+        {
+            memcpy(&dst, lpDestRect, sizeof(dst));
+
+            if (dst.right > this->width)
+                dst.right = this->width;
+
+            if (dst.bottom > this->height)
+                dst.bottom = this->height;
+        }
+
         if (dwFlags & DDBLT_COLORFILL)
         {
-            if (lpDestRect)
-            {
-                for (int x = 0; x < lpDestRect->right - lpDestRect->left; x++) {
-                    for (int y = 0; y < lpDestRect->bottom - lpDestRect->top; y++) {
-                        this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = lpDDBltFx->dwFillColor;
-                    }
-                }
-            }
-            else
-            {
-                if (this->bpp == 16)
-                {
-                    WORD *p = (void *)this->surface;
-                    for (int i = 0; i < this->width * this->height; i++) {
-                        p[i] = lpDDBltFx->dwFillColor;
-                    }
+            for (int x = 0; x < dst.right - dst.left; x++) {
+                for (int y = 0; y < dst.bottom - dst.top; y++) {
+                    this->surface[x + dst.left + (this->width * (y + dst.top))] = lpDDBltFx->dwFillColor;
                 }
             }
         }
 
-        if (lpDestRect && lpSrcRect && lpDestRect->right <= this->width && lpDestRect->bottom <= this->height)
+        if (lpDDSrcSurface)
         {
             EnterCriticalSection(&this->lock);
-
-            for (int x = 0; x < lpSrcRect->right - lpSrcRect->left; x++) {
-                for (int y = 0; y < lpSrcRect->bottom - lpSrcRect->top; y++) {
-                    this->surface[x + lpDestRect->left + (this->width * (y + lpDestRect->top))] = srcImpl->surface[x + lpSrcRect->left + (srcImpl->width * (y + lpSrcRect->top))];
+            
+            for (int x = 0; x < src.right - src.left; x++) {
+                for (int y = 0; y < src.bottom - src.top; y++) {
+                    this->surface[x + dst.left + (this->width * (y + dst.top))] = srcImpl->surface[x + src.left + (srcImpl->width * (y + src.top))];
                 }
             }
-
+            
             LeaveCriticalSection(&this->lock);
         }
     }
