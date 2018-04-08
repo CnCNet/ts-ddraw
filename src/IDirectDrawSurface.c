@@ -284,11 +284,10 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
                     int ydst = this->width * (y + dst.top);
                     int ysrc = srcImpl->width * (y + src.top);
 
-                    for (int x = 0; x < dst_w; x++)
-                    {
-                        this->surface[x + dst.left + ydst] =
-                            srcImpl->surface[x + src.left + ysrc];
-                    }
+                    void *d = (void *)(this->surface + dst.left + ydst);
+                    void *s = (void *)(srcImpl->surface + src.left + ysrc);
+                    
+                    memcpy(d, s, dst_w * 2);
                 }
             }
             else
