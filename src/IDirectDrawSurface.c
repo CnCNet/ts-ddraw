@@ -251,9 +251,16 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
         {
             EnterCriticalSection(&this->lock);
             
-            for (int x = 0; x < dst.right - dst.left; x++) {
-                for (int y = 0; y < dst.bottom - dst.top; y++) {
-                    this->surface[x + dst.left + (this->width * (y + dst.top))] = lpDDBltFx->dwFillColor;
+            int dst_w = dst.right - dst.left;
+            int dst_h = dst.bottom - dst.top;
+            
+            for (int y = 0; y < dst_h; y++) 
+            {
+                int ydst = this->width * (y + dst.top);
+                
+                for (int x = 0; x < dst_w; x++)
+                {
+                    this->surface[x + dst.left + ydst] = lpDDBltFx->dwFillColor;
                 }
             }
             
@@ -266,15 +273,41 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
             
             int dst_w = dst.right - dst.left;
             int dst_h = dst.bottom - dst.top;
-            float w_scale = (src.right - src.left) / (float)dst_w;
-            float h_scale = (src.bottom - src.top) / (float)dst_h;
-
-            for (int x = 0; x < dst_w; x++) {
-                for (int y = 0; y < dst_h; y++) {
-                    this->surface[x + dst.left + (this->width * (y + dst.top))] = srcImpl->surface[((unsigned int)(x * w_scale) + src.left + (srcImpl->width * ((unsigned int)(y * h_scale) + src.top)))];
+            int src_w = src.right - src.left;
+            int src_h = src.bottom - src.top;
+            
+            if (dst_w == src_w && dst_h == src_h)
+            {
+                for (int y = 0; y < dst_h; y++) 
+                {
+                    int ydst = this->width * (y + dst.top);
+                    int ysrc = srcImpl->width * (y + src.top);
+                    
+                    for (int x = 0; x < dst_w; x++) 
+                    {
+                        this->surface[x + dst.left + ydst] = 
+                            srcImpl->surface[x + src.left + ysrc];
+                    }
                 }
             }
-            
+            else
+            {
+                float w_scale = (src.right - src.left) / (float)dst_w;
+                float h_scale = (src.bottom - src.top) / (float)dst_h;
+
+                for (int y = 0; y < dst_h; y++) 
+                {
+                    int ysrc = srcImpl->width * ((unsigned int)(y * h_scale) + src.top);
+                    int ydst = this->width * (y + dst.top);
+                    
+                    for (int x = 0; x < dst_w; x++) 
+                    {
+                        this->surface[x + dst.left + ydst] = 
+                            srcImpl->surface[((unsigned int)(x * w_scale) + src.left + ysrc)];
+                    }
+                }
+            }
+
             LeaveCriticalSection(&this->lock);
         }
     }
