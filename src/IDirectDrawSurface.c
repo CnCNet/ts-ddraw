@@ -40,7 +40,7 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
 DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 {
     Sleep(500);
-    
+
     DWORD tick_start = 0;
     DWORD tick_end = 0;
     DWORD frame_len = 1000.0f / 60;
@@ -250,60 +250,80 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
         if (dwFlags & DDBLT_COLORFILL)
         {
             EnterCriticalSection(&this->lock);
-            
+
             int dst_w = dst.right - dst.left;
             int dst_h = dst.bottom - dst.top;
-            
-            for (int y = 0; y < dst_h; y++) 
+
+            for (int y = 0; y < dst_h; y++)
             {
                 int ydst = this->width * (y + dst.top);
-                
+
                 for (int x = 0; x < dst_w; x++)
                 {
                     this->surface[x + dst.left + ydst] = lpDDBltFx->dwFillColor;
                 }
             }
-            
+
             LeaveCriticalSection(&this->lock);
         }
 
         if (lpDDSrcSurface)
         {
             EnterCriticalSection(&this->lock);
-            
+
             int dst_w = dst.right - dst.left;
             int dst_h = dst.bottom - dst.top;
+
             int src_w = src.right - src.left;
             int src_h = src.bottom - src.top;
-            
+
             if (dst_w == src_w && dst_h == src_h)
             {
-                for (int y = 0; y < dst_h; y++) 
+                for (int y = 0; y < dst_h; y++)
                 {
                     int ydst = this->width * (y + dst.top);
                     int ysrc = srcImpl->width * (y + src.top);
-                    
-                    for (int x = 0; x < dst_w; x++) 
+
+                    for (int x = 0; x < dst_w; x++)
                     {
-                        this->surface[x + dst.left + ydst] = 
+                        this->surface[x + dst.left + ydst] =
                             srcImpl->surface[x + src.left + ysrc];
                     }
                 }
             }
             else
             {
-                float w_scale = (src.right - src.left) / (float)dst_w;
-                float h_scale = (src.bottom - src.top) / (float)dst_h;
+                int error_y = 0;
+                int src_y = src.top;
 
-                for (int y = 0; y < dst_h; y++) 
-                {
-                    int ysrc = srcImpl->width * ((unsigned int)(y * h_scale) + src.top);
-                    int ydst = this->width * (y + dst.top);
-                    
-                    for (int x = 0; x < dst_w; x++) 
+                int error_x = 0;
+                int src_x = 0;
+
+                for (int y = 0; y < dst_h; y++) {
+                    int dst_left_top_y_width = dst.left + this->width * (y + dst.top);
+                    unsigned int src_left_y_scaled = src.left + srcImpl->width * src_y;
+
+                    error_x = 0;
+                    src_x = 0;
+                    for (int x = 0; x < dst_w; x++) {
+                        this->surface[x + dst_left_top_y_width] =
+                            srcImpl->surface[src_x + src_left_y_scaled];
+
+                        if (2 * (error_x + src_w) < dst_w)
+                            error_x += src_w;
+                        else
+                        {
+                            src_x++;
+                            error_x += src_w - dst_w;
+                        }
+                    }
+
+                    if (2 * (error_y + src_h) < dst_h)
+                        error_y += src_h;
+                    else
                     {
-                        this->surface[x + dst.left + ydst] = 
-                            srcImpl->surface[((unsigned int)(x * w_scale) + src.left + ysrc)];
+                        src_y++;
+                        error_y += src_h - dst_h;
                     }
                 }
             }
