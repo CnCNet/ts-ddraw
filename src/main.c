@@ -21,6 +21,7 @@
 int PROXY = 0;
 int VERBOSE = 1;
 int TRACE = 0;
+int FPS = 0;
 
 static HANDLE real_dll = NULL;
 static HRESULT WINAPI (*real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*) = NULL;
@@ -41,7 +42,10 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_TRACE", buf, sizeof buf);
     if (buf[0]) TRACE = 1;
-
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_FPS", buf, sizeof buf);
+    if (buf[0]) FPS = 1;
+    
     if (TRACE)
     {
         freopen("stdout.txt", "w", stdout);

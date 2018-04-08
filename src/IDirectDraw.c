@@ -450,8 +450,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_SYSCOMMAND:
             if (wParam == SC_CLOSE)
             {
-                if (!this->wndProc(hWnd, uMsg, wParam, lParam))
-                    exit(0);
+                exit(0);
             }
             break;
         */

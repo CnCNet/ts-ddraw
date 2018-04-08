@@ -27,6 +27,7 @@
 
     extern int PROXY;
     extern int VERBOSE;
+    extern int FPS;
 
 #else
     #define dprintf(...)

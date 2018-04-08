@@ -47,7 +47,6 @@ struct IDirectDrawSurfaceImpl
     HDC hDC;
     CRITICAL_SECTION lock;
     HANDLE thread;
-    HANDLE frame;
 
     unsigned short *overlay;
     HDC overlayDC;

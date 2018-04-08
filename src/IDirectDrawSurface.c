@@ -43,7 +43,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     DWORD tick_start = 0;
     DWORD tick_end = 0;
-    DWORD frame_len = 1000.0f / 60;
+    DWORD target_fps = 60;
+    DWORD frame_len = 1000.0f / target_fps;
 
     while (this->thread)
     {
@@ -57,6 +58,18 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         LeaveCriticalSection(&this->lock);
 
         tick_end = timeGetTime();
+
+#if _DEBUG
+        frame_time += (tick_end - tick_start);
+        frames++;
+        if (frames >= target_fps)
+        {
+            printf("Timed FPS: %.2f\n", 1000.0f / (frame_time / frames));
+            printf("Real  FPS: %.2f\n", 1000.0f / ((tick_end - real_time) / frames));
+            frame_time = frames = 0;
+            real_time = tick_end;
+        }
+#endif
 
         if (tick_end - tick_start < frame_len)
         {
@@ -126,7 +139,6 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
     {
         dprintf("Starting renderer.\n");
-        this->frame = CreateEvent(NULL, TRUE, FALSE, NULL);
         this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
         if (SetThreadPriority(this->thread, THREAD_PRIORITY_ABOVE_NORMAL))
         {
@@ -434,7 +446,6 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
         lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
 
-
         lpDDSurfaceDesc->dwFlags = 0x0000100F;
         lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
     }
@@ -604,12 +615,12 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         lpDDSurfaceDesc->lpSurface = this->surface;
         lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
         lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        lpDDSurfaceDesc->dwFlags = 0x0000100F;
-        lpDDSurfaceDesc->ddsCaps.dwCaps = 0x10004000;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;                   
         lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
         lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
+        lpDDSurfaceDesc->dwFlags = 0x0000100F;
+        lpDDSurfaceDesc->ddsCaps.dwCaps = 0x10004000;
         lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
 
         EnterCriticalSection(&this->lock);
@@ -635,12 +646,16 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
         GetDIBits(this->overlayDC, this->overlayBitmap, 0, this->height, this->overlay, this->bmi, DIB_RGB_COLORS);
 
         // FIXME: using black as magic transparency color
-        for (int x = 0; x < this->width; x++) {
-            for (int y = 0; y < this->height; y++) {
-                unsigned short px = this->overlay[x + (this->width * y)];
+        for (int y = 0; y < this->height; y++)
+        {
+            int ydst = this->width * y;
+            
+            for (int x = 0; x < this->width; x++) 
+            {
+                unsigned short px = this->overlay[x + ydst];
                 if (px)
                 {
-                    this->surface[x + (this->width * y)] = px;
+                    this->surface[x + ydst] = px;
                 }
             }
         }
