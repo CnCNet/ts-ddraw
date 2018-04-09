@@ -45,7 +45,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD tick_end = 0;
     DWORD target_fps = 60;
     DWORD frame_len = 1000.0f / target_fps;
-#if _DEBUG
+#ifdef _DEBUG
     double frame_time = 0, real_time = timeGetTime();
     int frames = 0;
 #endif
@@ -63,7 +63,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         tick_end = timeGetTime();
 
-#if _DEBUG
+#ifdef _DEBUG
         frame_time += (tick_end - tick_start);
         frames++;
         if (frames >= target_fps)
@@ -381,11 +381,13 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     if (lpDestRect)
     {
         dprintf(" dest: l: %d t: %d r: %d b: %d\n", (int)lpDestRect->left, (int)lpDestRect->top, (int)lpDestRect->right, (int)lpDestRect->bottom);
+        dprintf(" dest: w: %d h: %d bpp: %d\n", (int)this->width, (int)this->height, (int)this->bpp);
     }
 
     if (lpSrcRect)
     {
-        dprintf("  src: l: %d t: %d r: %d b: %d\n", (int)lpSrcRect->left, (int)lpSrcRect->top, (int)lpSrcRect->right, (int)lpSrcRect->bottom);
+        dprintf(" src: l: %d t: %d r: %d b: %d\n", (int)lpSrcRect->left, (int)lpSrcRect->top, (int)lpSrcRect->right, (int)lpSrcRect->bottom);
+        dprintf(" src: w: %d h: %d bpp: %d\n", (int)srcImpl->width, (int)srcImpl->height, (int)srcImpl->bpp);
     }
 
     if (lpDDBltFx)
