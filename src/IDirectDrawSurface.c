@@ -302,43 +302,30 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
                     void *d = (void *)(this->surface + dst.left + ydst);
                     void *s = (void *)(srcImpl->surface + src.left + ysrc);
-                    
+
                     memcpy(d, s, dst_w * 2);
                 }
             }
             else
             {
-                int error_y = 0;
-                int src_y = src.top;
 
-                int error_x = 0;
-                int src_x = 0;
+                unsigned int x_ratio = (unsigned int)((src_w << 16) / dst_w) + 1;
+                unsigned int y_ratio = (unsigned int)((src_h << 16) / dst_h) + 1;
 
-                for (int y = 0; y < dst_h; y++) {
-                    int dst_left_top_y_width = dst.left + this->width * (y + dst.top);
-                    unsigned int src_left_y_scaled = src.left + srcImpl->width * src_y;
+                unsigned int src_x, src_y;
+                unsigned int dest_base, source_base;
 
-                    error_x = 0;
-                    src_x = 0;
-                    for (int x = 0; x < dst_w; x++) {
-                        this->surface[x + dst_left_top_y_width] =
-                            srcImpl->surface[src_x + src_left_y_scaled];
+                for (unsigned int y = 0; y < dst_h; y++) {
+                    dest_base = dst.left + this->width * (y + dst.top);
 
-                        if (2 * (error_x + src_w) < dst_w)
-                            error_x += src_w;
-                        else
-                        {
-                            src_x++;
-                            error_x += src_w - dst_w;
-                        }
-                    }
+                    src_y = (y * y_ratio) >> 16;
 
-                    if (2 * (error_y + src_h) < dst_h)
-                        error_y += src_h;
-                    else
-                    {
-                        src_y++;
-                        error_y += src_h - dst_h;
+                    source_base = src.left + srcImpl->width * (src_y + src.top);
+
+                    for (unsigned int x = 0; x < dst_w; x++) {
+                        src_x = (x * x_ratio) >> 16;
+
+                        this->surface[dest_base + x] = srcImpl->surface[source_base + src_x];
                     }
                 }
             }
