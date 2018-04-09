@@ -303,7 +303,7 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
                     void *d = (void *)(this->surface + dst.left + ydst);
                     void *s = (void *)(srcImpl->surface + src.left + ysrc);
 
-                    memcpy(d, s, dst_w * 2);
+                    memcpy(d, s, dst_w * this->lXPitch);
                 }
             }
             else

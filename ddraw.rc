@@ -1,6 +1,6 @@
 1 VERSIONINFO
-FILEVERSION 1,1,0,0
-PRODUCTVERSION 1,1,0,0
+FILEVERSION 1,1,1,1
+PRODUCTVERSION 1,1,1,1
 {
     BLOCK "StringFileInfo"
     {
@@ -8,7 +8,7 @@ PRODUCTVERSION 1,1,0,0
         {
             VALUE "CompanyName", "cncnet.org"
             VALUE "FileDescription", "DirectDraw replacement for Tiberian Sun and Red Alert 2"
-            VALUE "FileVersion", "TS-DDraw GDI"
+            VALUE "FileVersion", "1.1.1.1"
             VALUE "InternalName", "ddraw"
             VALUE "LegalCopyright", "Copyright (c) 2010-2018"
             VALUE "LegalTrademarks", ""
