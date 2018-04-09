@@ -45,6 +45,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD tick_end = 0;
     DWORD target_fps = 60;
     DWORD frame_len = 1000.0f / target_fps;
+#if _DEBUG
+    double frame_time = 0, real_time = timeGetTime();
+    int frames = 0;
+#endif
 
     while (this->thread)
     {
@@ -615,7 +619,7 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         lpDDSurfaceDesc->lpSurface = this->surface;
         lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
         lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;                   
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
         lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
         lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
