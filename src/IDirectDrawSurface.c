@@ -17,6 +17,9 @@
 #include "main.h"
 #include "IDirectDrawClipper.h"
 #include "IDirectDrawSurface.h"
+#include "scale_pattern.h"
+#include <stdint.h>
+#include <stdio.h>
 
 static IDirectDrawSurfaceImplVtbl Vtbl;
 
@@ -293,40 +296,131 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
             int src_w = src.right - src.left;
             int src_h = src.bottom - src.top;
 
+            int dst_byte_width = dst_w * this->lXPitch;
+
             if (dst_w == src_w && dst_h == src_h)
             {
-                for (int y = 0; y < dst_h; y++)
+                // The simplest possiblity: no scaling needed
+                uint16_t *dest_base = this->surface + dst.left + (this->width * dst.top);
+                uint16_t *src_base = srcImpl->surface + src.left + (srcImpl->width * src.top);
+
+                while (dst_h-- > 0)
                 {
-                    int ydst = this->width * (y + dst.top);
-                    int ysrc = srcImpl->width * (y + src.top);
+                    memcpy((void *)dest_base, (void *)src_base, dst_byte_width);
 
-                    void *d = (void *)(this->surface + dst.left + ydst);
-                    void *s = (void *)(srcImpl->surface + src.left + ysrc);
-
-                    memcpy(d, s, dst_w * this->lXPitch);
+                    dest_base += this->width;
+                    src_base += srcImpl->width;
                 }
             }
             else
             {
 
+                /* Linear scaling using integer math
+                 * Since the scaling pattern for x will aways be the same, the pattern itself gets pre-calculated
+                 * and stored in an array.
+                 * Y scaling pattern gets calculated during the blit loop
+                 */
                 unsigned int x_ratio = (unsigned int)((src_w << 16) / dst_w) + 1;
                 unsigned int y_ratio = (unsigned int)((src_h << 16) / dst_h) + 1;
 
                 unsigned int src_x, src_y;
                 unsigned int dest_base, source_base;
 
-                for (unsigned int y = 0; y < dst_h; y++) {
-                    dest_base = dst.left + this->width * (y + dst.top);
+                scale_pattern *pattern = malloc((dst_w + 1) * (sizeof(scale_pattern)));
+                int pattern_idx = 0;
+                int last_src_x = 0;
 
-                    src_y = (y * y_ratio) >> 16;
+                if (pattern != NULL)
+                {
+                    pattern[pattern_idx] = (scale_pattern){ ONCE, 0, 0, 1 };
 
-                    source_base = src.left + srcImpl->width * (src_y + src.top);
-
-                    for (unsigned int x = 0; x < dst_w; x++) {
+                    /* Build the pattern! */
+                    for (unsigned int x = 1; x < dst_w; x++) {
                         src_x = (x * x_ratio) >> 16;
-
-                        this->surface[dest_base + x] = srcImpl->surface[source_base + src_x];
+                        if (src_x == last_src_x)
+                        {
+                            if (pattern[pattern_idx].type == REPEAT || pattern[pattern_idx].type == ONCE)
+                            {
+                                pattern[pattern_idx].type = REPEAT;
+                                pattern[pattern_idx].count++;
+                            }
+                            else if (pattern[pattern_idx].type == SEQUENCE)
+                            {
+                                pattern_idx++;
+                                pattern[pattern_idx] = (scale_pattern){ REPEAT, x, src_x, 1 };
+                            }
+                        }
+                        else if (src_x == last_src_x + 1)
+                        {
+                            if (pattern[pattern_idx].type == SEQUENCE || pattern[pattern_idx].type == ONCE)
+                            {
+                                pattern[pattern_idx].type = SEQUENCE;
+                                pattern[pattern_idx].count++;
+                            }
+                            else if (pattern[pattern_idx].type == REPEAT)
+                            {
+                                pattern_idx++;
+                                pattern[pattern_idx] = (scale_pattern){ ONCE, x, src_x, 1 };
+                            }
+                        }
+                        else
+                        {
+                            pattern_idx++;
+                            pattern[pattern_idx] = (scale_pattern){ ONCE, x, src_x, 1 };
+                        }
+                        last_src_x = src_x;
                     }
+                    pattern[pattern_idx+1] = (scale_pattern){ END, 0, 0, 0 };
+
+
+                    /* Do the actual blitting */
+                    uint16_t *d, *s, v;
+                    int count = 0;
+
+                    for (unsigned int y = 0; y < dst_h; y++) {
+
+                        dest_base = dst.left + this->width * (y + dst.top);
+
+                        src_y = (y * y_ratio) >> 16;
+
+                        source_base = src.left + srcImpl->width * (src_y + src.top);
+
+                        pattern_idx = 0;
+                        scale_pattern *current = &pattern[pattern_idx];
+                        do {
+                            switch(current->type)
+                            {
+                            case ONCE:
+                                this->surface[dest_base + current->dst_index] =
+                                    srcImpl->surface[source_base + current->src_index];
+                                break;
+
+                            case REPEAT:
+                                d = (this->surface + dest_base + current->dst_index);
+                                v = srcImpl->surface[source_base + current->src_index];
+
+                                count = current->count;
+                                while (count-- > 0)
+                                    *d++ = v;
+
+                                break;
+
+                            case SEQUENCE:
+                                d = this->surface + dest_base + current->dst_index;
+                                s = srcImpl->surface + source_base + current->src_index;
+
+                                memcpy((void *)d, (void *)s, current->count * this->lXPitch);
+                                break;
+
+                            case END:
+                            default:
+                                break;
+                            }
+
+                            current = &pattern[++pattern_idx];
+                        } while (current->type != END);
+                    }
+                    free(pattern);
                 }
             }
 
@@ -642,8 +736,8 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
         for (int y = 0; y < this->height; y++)
         {
             int ydst = this->width * y;
-            
-            for (int x = 0; x < this->width; x++) 
+
+            for (int x = 0; x < this->width; x++)
             {
                 unsigned short px = this->overlay[x + ydst];
                 if (px)
