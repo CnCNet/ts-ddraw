@@ -393,21 +393,41 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
     return ret;
 }
 
+bool CaptureMouse = false;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     IDirectDrawImpl *this = ddraw;
+    RECT rcClip;
 
     switch(uMsg)
     {
+        case WM_SHOWWINDOW:
+            if (CaptureMouse)
+            {
+                GetWindowRect(hWnd, &rcClip);
+                ClipCursor(&rcClip);
+            }
+            else
+            {
+                ClipCursor(NULL);
+            }
+            break;
         case WM_ACTIVATE:
+            /* keep the cursor restrained after alt-tabbing */
+            if (wParam == WA_ACTIVE)
+            {
+            }
+            else if (wParam == WA_INACTIVE)
+            {
+                ClipCursor(NULL);
+            }
+
             if (this->dwFlags & DDSCL_FULLSCREEN)
             {
                 if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
                 {
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
-
-                    /* keep the cursor restrained after alt-tabbing */
-                    RECT rcClip;
                     GetWindowRect(hWnd, &rcClip);
                     ClipCursor(&rcClip);
                 }
@@ -421,10 +441,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 wParam = WA_ACTIVE;
             }
+            if (CaptureMouse)
+            {
+                GetWindowRect(hWnd, &rcClip);
+                ClipCursor(&rcClip);
+            }
+            break;
 
         case WM_SIZE:
-        case WM_SIZING:
+            if (CaptureMouse)
+            {
+                GetWindowRect(hWnd, &rcClip);
+                ClipCursor(&rcClip);
+            }
         case WM_MOVE:
+            if (CaptureMouse)
+            {
+                GetWindowRect(hWnd, &rcClip);
+                ClipCursor(&rcClip);
+            }
+        case WM_SIZING:
         case WM_MOVING:
             {
                 POINT p = { 0, 0 };
@@ -432,7 +468,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 GetClientRect(this->dd->hWnd, &this->winRect);
                 this->winRect.left = p.x;
                 this->winRect.top = p.y;
-                
+
                 InvalidateRect(hWnd, NULL, TRUE); // forces TS and RA2 to redraw
                 break;
             }
@@ -443,17 +479,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 wParam = TRUE;
                 lParam = 0;
-                break;
             }
+            if (wParam && CaptureMouse)
+            {
+                GetWindowRect(hWnd, &rcClip);
+                ClipCursor(&rcClip);
+            }
+            break;
 
-        /* make windowed games close on X 
+        /* make windowed games close on X */
         case WM_SYSCOMMAND:
-            if (wParam == SC_CLOSE)
+            if (wParam == SC_CLOSE && GameHandlesClose != true)
             {
                 exit(0);
             }
             break;
-        */
+
+        case WM_KEYDOWN:
+            if ((GetKeyState(VK_RMENU) & 0x8000) && GetKeyState(VK_RCONTROL) & 0x8000)
+            {
+                if (CaptureMouse)
+                {
+                    ClipCursor(NULL);
+                    CaptureMouse = false;
+                }
+                else
+                {
+                    GetWindowRect(hWnd, &rcClip);
+                    ClipCursor(&rcClip);
+                    CaptureMouse = true;
+                }
+            }
+            break;
     }
 
     return this->wndProc(hWnd, uMsg, wParam, lParam);
@@ -519,13 +576,13 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
                 this->screenWidth = this->winMode.dmPelsWidth;
                 this->screenHeight = this->winMode.dmPelsHeight;
             }
-            
+
             POINT p = { 0, 0 };
             ClientToScreen(this->dd->hWnd, &p);
             GetClientRect(this->dd->hWnd, &this->winRect);
             this->winRect.left = p.x;
             this->winRect.top = p.y;
-            
+
         }
     }
 
