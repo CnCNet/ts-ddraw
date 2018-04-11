@@ -402,6 +402,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     switch(uMsg)
     {
+        //Workaround for invisible menu on Load/Save/Delete in Tiberian Sun
+        static int redrawCount = 0;
+        case WM_PARENTNOTIFY:
+        {
+            if (LOWORD(wParam) == WM_DESTROY)
+                redrawCount = 2;
+
+            break;
+        }
+        case WM_PAINT:
+        {
+            if (redrawCount > 0)
+            {
+                redrawCount--;
+                RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
+            }
+            break;
+        }
+        
         case WM_SHOWWINDOW:
             if (CaptureMouse)
             {
