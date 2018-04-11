@@ -469,7 +469,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 this->winRect.left = p.x;
                 this->winRect.top = p.y;
 
-                InvalidateRect(hWnd, NULL, TRUE); // forces TS and RA2 to redraw
+                RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
                 break;
             }
 

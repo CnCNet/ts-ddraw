@@ -3,7 +3,7 @@
 CC ?= i686-w64-mingw32-gcc
 WINDRES ?= windres
 STRIP ?= strip
-COPY ?= cp
+COPY ?= copy
 
 CFLAGS=--std=c99 -Wall -Wl,--enable-stdcall-fixup -O6 -g
 LIBS=-lgdi32 -lwinmm
