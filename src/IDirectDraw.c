@@ -394,6 +394,32 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 }
 
 bool CaptureMouse = false;
+bool MouseIsLocked = false;
+void mouse_lock()
+{
+    RECT rc;
+
+    GetClientRect(ddraw->hWnd, &rc);
+    // Convert the client area to screen coordinates.
+    POINT pt = { rc.left, rc.top };
+    POINT pt2 = { rc.right, rc.bottom };
+    ClientToScreen(ddraw->hWnd, &pt);
+    ClientToScreen(ddraw->hWnd, &pt2);
+
+    SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
+
+    SetCapture(ddraw->hWnd);
+    ClipCursor(&rc);
+    CaptureMouse = true;
+    MouseIsLocked = true;
+}
+
+void mouse_unlock()
+{
+    ClipCursor(NULL);
+    ReleaseCapture();
+    MouseIsLocked = false;
+}
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -420,26 +446,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
         }
-        
-        case WM_SHOWWINDOW:
-            if (CaptureMouse)
+
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONUP:
+            if (!MouseIsLocked)
             {
-                GetWindowRect(hWnd, &rcClip);
-                ClipCursor(&rcClip);
+                mouse_lock();
+                return 0;
             }
-            else
+            break;
+
+        case WM_SHOWWINDOW:
+            if (wParam)
             {
-                ClipCursor(NULL);
+                mouse_lock();
             }
             break;
         case WM_ACTIVATE:
             /* keep the cursor restrained after alt-tabbing */
             if (wParam == WA_ACTIVE)
             {
+                mouse_lock();
             }
             else if (wParam == WA_INACTIVE)
             {
-                ClipCursor(NULL);
+                mouse_unlock();
             }
 
             if (this->dwFlags & DDSCL_FULLSCREEN)
@@ -460,25 +492,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 wParam = WA_ACTIVE;
             }
-            if (CaptureMouse)
-            {
-                GetWindowRect(hWnd, &rcClip);
-                ClipCursor(&rcClip);
-            }
             break;
 
         case WM_SIZE:
-            if (CaptureMouse)
-            {
-                GetWindowRect(hWnd, &rcClip);
-                ClipCursor(&rcClip);
-            }
         case WM_MOVE:
-            if (CaptureMouse)
-            {
-                GetWindowRect(hWnd, &rcClip);
-                ClipCursor(&rcClip);
-            }
         case WM_SIZING:
         case WM_MOVING:
             {
@@ -499,11 +516,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 wParam = TRUE;
                 lParam = 0;
             }
-            if (wParam && CaptureMouse)
-            {
-                GetWindowRect(hWnd, &rcClip);
-                ClipCursor(&rcClip);
-            }
             break;
 
         /* make windowed games close on X */
@@ -515,20 +527,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_KEYDOWN:
+
+            if(wParam == VK_CONTROL || wParam == VK_TAB)
+            {
+                if(GetAsyncKeyState(VK_CONTROL) & 0x8000 && GetAsyncKeyState(VK_TAB) & 0x8000)
+                {
+                    mouse_unlock();
+                    return 0;
+                }
+            }
             if ((GetKeyState(VK_RMENU) & 0x8000) && GetKeyState(VK_RCONTROL) & 0x8000)
             {
                 if (CaptureMouse)
                 {
-                    ClipCursor(NULL);
+                    mouse_unlock();
                     CaptureMouse = false;
                 }
                 else
                 {
-                    GetWindowRect(hWnd, &rcClip);
-                    ClipCursor(&rcClip);
+                    mouse_lock();
                     CaptureMouse = true;
                 }
+                return 0;
             }
+            break;
+
+        case WM_MOUSELEAVE:
+            mouse_unlock();
+            return 0;
             break;
     }
 
