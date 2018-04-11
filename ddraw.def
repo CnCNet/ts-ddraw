@@ -2,3 +2,6 @@ LIBRARY     ddraw.dll
 
 EXPORTS
     DirectDrawCreate            @1
+    TSDDRAW                     DATA
+    GameHandlesClose            DATA
+    CaptureMouse                DATA

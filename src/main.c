@@ -29,7 +29,10 @@ static HRESULT WINAPI (*real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUn
 BOOL WINAPI DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
 #endif
 
-HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter) 
+bool TSDDRAW = true;
+bool GameHandlesClose = false;
+
+HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {
 #ifdef _DEBUG
     char buf[32];
@@ -45,7 +48,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_FPS", buf, sizeof buf);
     if (buf[0]) FPS = 1;
-    
+
     if (TRACE)
     {
         freopen("stdout.txt", "w", stdout);

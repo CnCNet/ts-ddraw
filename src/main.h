@@ -16,6 +16,7 @@
 
 #include <windows.h>
 #include <ddraw.h>
+#include <stdbool.h>
 
 #ifndef _MAIN_
 #define _MAIN_
@@ -40,11 +41,13 @@
 
 // TODO: remove these
 #define ENTER
-#define LEAVE 
+#define LEAVE
 
 void dump_ddcaps(LPDDCAPS);
 void dump_ddsurfacedesc(LPDDSURFACEDESC);
 void dump_ddpixelformat(LPDDPIXELFORMAT);
 void dump_ddbltfx(LPDDBLTFX);
+
+bool GameHandlesClose;
 
 #endif
