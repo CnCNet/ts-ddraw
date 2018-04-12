@@ -536,6 +536,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
 
+        case WM_SYSKEYDOWN:
+            return 0;
+            
         case WM_KEYDOWN:
 
             if(wParam == VK_CONTROL || wParam == VK_TAB)
