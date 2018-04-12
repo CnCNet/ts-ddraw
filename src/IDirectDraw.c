@@ -395,20 +395,19 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 
 bool CaptureMouse = false;
 bool MouseIsLocked = false;
-void mouse_lock()
+void mouse_lock(HWND hWnd)
 {
     RECT rc;
 
-    GetClientRect(ddraw->hWnd, &rc);
+    GetClientRect(hWnd, &rc);
     // Convert the client area to screen coordinates.
     POINT pt = { rc.left, rc.top };
     POINT pt2 = { rc.right, rc.bottom };
-    ClientToScreen(ddraw->hWnd, &pt);
-    ClientToScreen(ddraw->hWnd, &pt2);
+    ClientToScreen(hWnd, &pt);
+    ClientToScreen(hWnd, &pt2);
 
     SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
 
-    SetCapture(ddraw->hWnd);
     ClipCursor(&rc);
     CaptureMouse = true;
     MouseIsLocked = true;
@@ -417,14 +416,28 @@ void mouse_lock()
 void mouse_unlock()
 {
     ClipCursor(NULL);
-    ReleaseCapture();
     MouseIsLocked = false;
 }
+
+void center_mouse(HWND hWnd)
+{
+    RECT rc;
+
+    GetClientRect(hWnd, &rc);
+    // Convert the client area to screen coordinates.
+    POINT pt = { rc.left, rc.top };
+    POINT pt2 = { rc.right, rc.bottom };
+    ClientToScreen(hWnd, &pt);
+    ClientToScreen(hWnd, &pt2);
+
+    SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
+    SetCursorPos(rc.right / 2 + rc.left, rc.bottom / 2 + rc.top);
+}
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     IDirectDrawImpl *this = ddraw;
-    RECT rcClip;
 
     switch(uMsg)
     {
@@ -434,7 +447,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (LOWORD(wParam) == WM_DESTROY)
                 redrawCount = 2;
-
+            else if (LOWORD(wParam) == WM_CREATE)
+                mouse_unlock();
             break;
         }
         case WM_PAINT:
@@ -447,27 +461,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
         }
 
-        case WM_LBUTTONUP:
-        case WM_RBUTTONUP:
-        case WM_MBUTTONUP:
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
             if (!MouseIsLocked)
-            {
-                mouse_lock();
-                return 0;
-            }
+                mouse_lock(hWnd);
             break;
 
-        case WM_SHOWWINDOW:
-            if (wParam)
-            {
-                mouse_lock();
-            }
-            break;
         case WM_ACTIVATE:
             /* keep the cursor restrained after alt-tabbing */
-            if (wParam == WA_ACTIVE)
+            if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
             {
-                mouse_lock();
+                RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
             }
             else if (wParam == WA_INACTIVE)
             {
@@ -479,8 +484,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
                 {
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
-                    GetWindowRect(hWnd, &rcClip);
-                    ClipCursor(&rcClip);
+                    mouse_lock(hWnd);
                 }
                 else if (wParam == WA_INACTIVE)
                 {
@@ -495,9 +499,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_SIZE:
+            switch (wParam)
+            {
+            case SIZE_MAXIMIZED:
+            case SIZE_MAXSHOW:
+            case SIZE_RESTORED:
+                center_mouse(hWnd);
+            default: break;
+            }
         case WM_MOVE:
-        case WM_SIZING:
-        case WM_MOVING:
             {
                 POINT p = { 0, 0 };
                 ClientToScreen(this->dd->hWnd, &p);
@@ -545,7 +555,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
                 else
                 {
-                    mouse_lock();
+                    mouse_lock(hWnd);
                     CaptureMouse = true;
                 }
                 return 0;
@@ -553,6 +563,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_MOUSELEAVE:
+        case WM_CLOSE:
             mouse_unlock();
             return 0;
             break;
