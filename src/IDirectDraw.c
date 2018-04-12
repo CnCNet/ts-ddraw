@@ -537,7 +537,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_SYSKEYDOWN:
-            return 0;
+            if (wParam != VK_F4)
+                return 0;
             
         case WM_KEYDOWN:
 
