@@ -634,7 +634,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
 
             if (!(this->dwFlags & DDSCL_FULLSCREEN))
             {
-                GetClientRect(this->dd->hWnd, &this->winRect);
+                GetClientRect(this->hWnd, &this->winRect);
                 
                 if (this->screenWidth > 0 && this->winRect.right > 0)
                 {
@@ -647,8 +647,8 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             }
             
             POINT p = { 0, 0 };
-            ClientToScreen(this->dd->hWnd, &p);
-            GetClientRect(this->dd->hWnd, &this->winRect);
+            ClientToScreen(this->hWnd, &p);
+            GetClientRect(this->hWnd, &this->winRect);
             OffsetRect(&this->winRect, p.x, p.y);
 
         }
