@@ -487,10 +487,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     ShowWindow(this->hWnd, SW_MINIMIZE);
                 }
             }
-            else
+            else // windowed
             {
-                wParam = WA_ACTIVE;
+
             }
+            
+            wParam = WA_ACTIVE;
             break;
 
         case WM_SIZE:
@@ -513,13 +515,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 break;
             }
 
-        /* don't ever tell they lose focus for real so they keep drawing */
+        /* don't ever tell they lose focus for real so they keep drawing 
+           Used for windowed mode but also fixes YR menus on alt+tab */
         case WM_ACTIVATEAPP:
-            if (!(this->dwFlags & DDSCL_FULLSCREEN))
-            {
-                wParam = TRUE;
-                lParam = 0;
-            }
+            wParam = TRUE;
+            lParam = 0;
             break;
 
         /* make windowed games close on X */
