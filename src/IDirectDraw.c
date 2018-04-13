@@ -379,8 +379,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         POINT p = { 0, 0 };
         ClientToScreen(this->dd->hWnd, &p);
         GetClientRect(this->dd->hWnd, &this->winRect);
-        this->winRect.left = p.x;
-        this->winRect.top = p.y;
+        OffsetRect(&this->winRect, p.x, p.y);
 
         /* restrain the cursor to the game in fullscreen */
         RECT rcClip;
@@ -512,8 +511,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 POINT p = { 0, 0 };
                 ClientToScreen(this->dd->hWnd, &p);
                 GetClientRect(this->dd->hWnd, &this->winRect);
-                this->winRect.left = p.x;
-                this->winRect.top = p.y;
+                OffsetRect(&this->winRect, p.x, p.y);
 
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
                 break;
@@ -536,6 +534,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
 
+        /* Prevent freezing on Alt or F10 in windowed mode */
         case WM_SYSKEYDOWN:
             if (wParam != VK_F4)
                 return 0;
@@ -640,8 +639,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             POINT p = { 0, 0 };
             ClientToScreen(this->dd->hWnd, &p);
             GetClientRect(this->dd->hWnd, &this->winRect);
-            this->winRect.left = p.x;
-            this->winRect.top = p.y;
+            OffsetRect(&this->winRect, p.x, p.y);
 
         }
     }
