@@ -420,17 +420,13 @@ void mouse_unlock()
 
 void center_mouse(HWND hWnd)
 {
-    RECT rc;
+    RECT size;
+    GetClientRect(hWnd, &size);
 
-    GetClientRect(hWnd, &rc);
-    // Convert the client area to screen coordinates.
-    POINT pt = { rc.left, rc.top };
-    POINT pt2 = { rc.right, rc.bottom };
-    ClientToScreen(hWnd, &pt);
-    ClientToScreen(hWnd, &pt2);
+    POINT pos = { 0, 0 };
+    ClientToScreen(hWnd, &pos);
 
-    SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
-    SetCursorPos(rc.right / 2 + rc.left, rc.bottom / 2 + rc.top);
+    SetCursorPos(size.right / 2 + pos.x, size.bottom / 2 + pos.y);
 }
 
 
