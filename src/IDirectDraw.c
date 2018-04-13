@@ -632,6 +632,20 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
                 this->screenHeight = this->winMode.dmPelsHeight;
             }
 
+            if (!(this->dwFlags & DDSCL_FULLSCREEN))
+            {
+                GetClientRect(this->dd->hWnd, &this->winRect);
+                
+                if (this->screenWidth > 0 && this->winRect.right > 0)
+                {
+                    int x = (this->screenWidth / 2) - (this->winRect.right / 2);
+                    int y = (this->screenHeight / 2) - (this->winRect.bottom / 2);
+                    RECT dst = { x, y, this->winRect.right+x, this->winRect.bottom+y };
+                    AdjustWindowRect(&dst, GetWindowLong(this->hWnd, GWL_STYLE), FALSE);
+                    SetWindowPos(this->hWnd, HWND_TOP, dst.left, dst.top, (dst.right - dst.left), (dst.bottom - dst.top), SWP_SHOWWINDOW);
+                }
+            }
+            
             POINT p = { 0, 0 };
             ClientToScreen(this->dd->hWnd, &p);
             GetClientRect(this->dd->hWnd, &this->winRect);
