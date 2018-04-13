@@ -37,6 +37,9 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
     GetWindowRect(hWnd, &pos);
 
     BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
+    
+    ReleaseDC(hWnd, hDC);
+    
     return FALSE;
 }
 
