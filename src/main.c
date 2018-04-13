@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdio.h>
 #include "main.h"
 #include "IDirectDraw.h"
 
@@ -99,6 +100,15 @@ int dprintf(const char *fmt, ...)
     return ret;
 }
 #endif
+
+void DebugPrint(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	char buffer[512];
+	_vsnprintf(buffer, sizeof(buffer), format, args);
+	OutputDebugStringA(buffer);
+}
 
 void dump_dwcaps(DWORD dwCaps)
 {

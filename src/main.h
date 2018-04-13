@@ -47,7 +47,10 @@ void dump_ddcaps(LPDDCAPS);
 void dump_ddsurfacedesc(LPDDSURFACEDESC);
 void dump_ddpixelformat(LPDDPIXELFORMAT);
 void dump_ddbltfx(LPDDBLTFX);
+void DebugPrint(const char *format, ...);
 
 bool GameHandlesClose;
+
+#define debug_(format, ...) DebugPrint("xDBG " format, ##__VA_ARGS__)
 
 #endif
