@@ -50,6 +50,7 @@ void dump_ddbltfx(LPDDBLTFX);
 void DebugPrint(const char *format, ...);
 
 bool GameHandlesClose;
+bool DrawFPS;
 
 #define debug_(format, ...) DebugPrint("xDBG " format, ##__VA_ARGS__)
 

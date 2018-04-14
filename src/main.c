@@ -33,6 +33,13 @@ BOOL WINAPI DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes
 bool TSDDRAW = true;
 bool GameHandlesClose = false;
 
+#ifdef _DEBUG
+bool DrawFPS = true;
+#else
+bool DrawFPS = false;
+#endif
+
+
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {
 #ifdef _DEBUG

@@ -491,7 +491,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
 
             }
-            
+
             wParam = WA_ACTIVE;
             break;
 
@@ -515,7 +515,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 break;
             }
 
-        /* don't ever tell they lose focus for real so they keep drawing 
+        /* don't ever tell they lose focus for real so they keep drawing
            Used for windowed mode but also fixes YR menus on alt+tab */
         case WM_ACTIVATEAPP:
             wParam = TRUE;
@@ -534,7 +534,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_SYSKEYDOWN:
             if (wParam != VK_F4)
                 return 0;
-            
+
         case WM_KEYDOWN:
 
             if(wParam == VK_CONTROL || wParam == VK_TAB)
@@ -559,6 +559,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
                 return 0;
             }
+            if ((wParam == 0x52) && (GetKeyState(VK_CONTROL) & 0x8000))
+                DrawFPS = !DrawFPS;
+
             break;
 
         case WM_MOUSELEAVE:
@@ -635,7 +638,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             if (!(this->dwFlags & DDSCL_FULLSCREEN))
             {
                 GetClientRect(this->hWnd, &this->winRect);
-                
+
                 if (this->screenWidth > 0 && this->winRect.right > 0)
                 {
                     int x = (this->screenWidth / 2) - (this->winRect.right / 2);
@@ -645,7 +648,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
                     SetWindowPos(this->hWnd, HWND_TOP, dst.left, dst.top, (dst.right - dst.left), (dst.bottom - dst.top), SWP_SHOWWINDOW);
                 }
             }
-            
+
             POINT p = { 0, 0 };
             ClientToScreen(this->hWnd, &p);
             GetClientRect(this->hWnd, &this->winRect);

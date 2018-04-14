@@ -67,6 +67,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     }
     rIndex = 0;
 
+    RECT textRect = (RECT){0,0,0,0};
+    char fpsString[256] = {0};
+
 #ifdef _DEBUG
     double frame_time = 0, real_time = timeGetTime();
     int frames = 0;
@@ -78,7 +81,12 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         EnterCriticalSection(&this->lock);
 
+
         BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+
+        if (DrawFPS)
+            DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);
+
         EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
 
         LeaveCriticalSection(&this->lock);
@@ -122,6 +130,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         avg_len = max_len * 3 / 2;
 
         frame_len = avg_len < target_frame_len ? target_frame_len : avg_len;
+
+        sprintf(fpsString, "FPS: %li", 1000 / frame_len);
 
         if (tick_len < frame_len)
         {
@@ -202,6 +212,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     dprintf("IDirectDrawSurface::construct() -> %p\n", this);
     dump_ddsurfacedesc(lpDDSurfaceDesc);
     this->ref++;
+
     return this;
 }
 
