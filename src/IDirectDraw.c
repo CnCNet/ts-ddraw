@@ -559,8 +559,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
                 return 0;
             }
-            if ((wParam == 0x52) && (GetKeyState(VK_CONTROL) & 0x8000))
+            if ((wParam == 0x52) && (GetKeyState(VK_RCONTROL) & 0x8000))
                 DrawFPS = !DrawFPS;
+
+            if ((wParam == VK_PRIOR) && (GetKeyState(VK_RCONTROL) & 0x8000))
+            {
+                TargetFPS = TargetFPS + 15;
+                TargetFrameLen = 1000.0f / TargetFPS;
+            }
+
+            if ((wParam == VK_NEXT) && (GetKeyState(VK_RCONTROL) & 0x8000))
+            {
+                TargetFPS = TargetFPS > 15 ? TargetFPS - 15 : TargetFPS;
+                TargetFrameLen = 1000.0f / TargetFPS;
+            }
 
             break;
 

@@ -39,12 +39,15 @@ bool DrawFPS = true;
 bool DrawFPS = false;
 #endif
 
+DWORD TargetFPS = 60;
+DWORD TargetFrameLen = 16;
+DWORD FrameDropMode = FRAMEDROP_AGGRESSIVE;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {
-#ifdef _DEBUG
     char buf[32];
     buf[0] = '\0';
+#ifdef _DEBUG
     GetEnvironmentVariable("DDRAW_PROXY", buf, sizeof buf);
     if (buf[0]) PROXY = 1;
     buf[0] = '\0';
@@ -64,6 +67,35 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     }
 #endif
     dprintf("DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
+
+    GetEnvironmentVariable("DDRAW_DRAW_FPS", buf, sizeof buf);
+    if (buf[0]) DrawFPS = true;
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_TARGET_FPS", buf, sizeof buf);
+    if (buf[0])
+    {
+        int tfps;
+        if (sscanf(buf, "%i", &tfps) && tfps > 0)
+        {
+            TargetFPS = (DWORD)tfps;
+            TargetFrameLen = 1000.0f / TargetFPS;
+        }
+    }
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_FRAMEDROP_NONE", buf, sizeof buf);
+    if (buf[0]) FrameDropMode = FRAMEDROP_NONE;
+
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_FRAMEDROP_MEDIUM", buf, sizeof buf);
+    if (buf[0]) FrameDropMode = FRAMEDROP_MEDIUM;
+
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_FRAMEDROP_AGGRESSIVE", buf, sizeof buf);
+    if (buf[0]) FrameDropMode = FRAMEDROP_AGGRESSIVE;
+
+    buf[0] = '\0';
+    GetEnvironmentVariable("DDRAW_FRAMEDROP_ULTRA", buf, sizeof buf);
+    if (buf[0]) FrameDropMode = FRAMEDROP_ULTRA;
 
     // unfortunately necessary to avoid random access violations
     SetProcessAffinityMask(GetCurrentProcess(), 1);

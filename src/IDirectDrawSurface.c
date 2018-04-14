@@ -49,14 +49,22 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     DWORD tick_start = 0;
     DWORD tick_end = 0;
-    DWORD target_fps = 60;
-    DWORD frame_len = 1000.0f / target_fps;
-    DWORD target_frame_len = frame_len;
+    DWORD frame_len = 1000.0f / TargetFPS;
+    TargetFrameLen = frame_len;
     DWORD tick_len = 0;
 
     DWORD max_len = frame_len;
     DWORD avg_len = frame_len;
-    DWORD frame_sample_count = 30;
+    DWORD frame_sample_count;
+
+    switch (FrameDropMode)
+    {
+    case FRAMEDROP_NONE:   frame_sample_count = 1; break;
+    case FRAMEDROP_MEDIUM: frame_sample_count = 10; break;
+    case FRAMEDROP_ULTRA:  frame_sample_count = 60; break;
+    case FRAMEDROP_AGGRESSIVE: default: frame_sample_count = 30;
+    }
+
     DWORD *recent_frames = malloc(sizeof(DWORD) * frame_sample_count);
     DWORD render_time = 0;
 
@@ -97,7 +105,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         frame_time += (tick_end - tick_start);
         frames++;
-        if (frames >= target_fps)
+        if (frames >= TargetFPS)
         {
             printf("Timed FPS: %.2f\n", 1000.0f / (frame_time / frames));
             printf("Real  FPS: %.2f\n", 1000.0f / ((tick_end - real_time) / frames));
@@ -121,17 +129,22 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             render_time += recent_frames[i];
         }
 
-        /* avg_len = render_time / frame_sample_count; */
+        avg_len = render_time / frame_sample_count;
 
         /* We'd rather drop frames than let the game slow down.
            So we get aggressive with the timers and drop the renderer framerate
            to what the PC can handle so the game can continue to run at full speed.
         */
-        avg_len = max_len * 3 / 2;
+        if (FrameDropMode == FRAMEDROP_NONE)
+            avg_len = TargetFrameLen;
+        if (FrameDropMode == FRAMEDROP_AGGRESSIVE)
+            avg_len = max_len;
+        else if (FrameDropMode == FRAMEDROP_ULTRA)
+            avg_len = max_len * 3 / 2;
 
-        frame_len = avg_len < target_frame_len ? target_frame_len : avg_len;
+        frame_len = avg_len < TargetFrameLen ? TargetFrameLen : avg_len;
 
-        sprintf(fpsString, "FPS: %li", 1000 / frame_len);
+        _snprintf(fpsString, 254, "FPS: %li\nTGT: %li", 1000 / frame_len, TargetFPS);
 
         if (tick_len < frame_len)
         {

@@ -24,6 +24,7 @@
 #ifdef _DEBUG
 
     #include <stdio.h>
+
     int dprintf(const char *, ...);
 
     extern int PROXY;
@@ -51,6 +52,13 @@ void DebugPrint(const char *format, ...);
 
 bool GameHandlesClose;
 bool DrawFPS;
+DWORD TargetFPS;
+DWORD TargetFrameLen;
+DWORD FrameDropMode;
+#define FRAMEDROP_NONE 0
+#define FRAMEDROP_MEDIUM 1
+#define FRAMEDROP_AGGRESSIVE 2
+#define FRAMEDROP_ULTRA 3
 
 #define debug_(format, ...) DebugPrint("xDBG " format, ##__VA_ARGS__)
 
