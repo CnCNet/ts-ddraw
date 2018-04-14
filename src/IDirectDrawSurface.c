@@ -37,9 +37,9 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
     GetWindowRect(hWnd, &pos);
 
     BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
-    
+
     ReleaseDC(hWnd, hDC);
-    
+
     return FALSE;
 }
 
@@ -51,6 +51,22 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD tick_end = 0;
     DWORD target_fps = 60;
     DWORD frame_len = 1000.0f / target_fps;
+    DWORD target_frame_len = frame_len;
+    DWORD tick_len = 0;
+
+    DWORD max_len = frame_len;
+    DWORD avg_len = frame_len;
+    DWORD frame_sample_count = 30;
+    DWORD *recent_frames = malloc(sizeof(DWORD) * frame_sample_count);
+    DWORD render_time = 0;
+
+    int rIndex;
+    for (rIndex = 0; rIndex < frame_sample_count; rIndex++)
+    {
+        recent_frames[rIndex] = frame_len;
+    }
+    rIndex = 0;
+
 #ifdef _DEBUG
     double frame_time = 0, real_time = timeGetTime();
     int frames = 0;
@@ -70,6 +86,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         tick_end = timeGetTime();
 
 #ifdef _DEBUG
+
         frame_time += (tick_end - tick_start);
         frames++;
         if (frames >= target_fps)
@@ -81,11 +98,37 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         }
 #endif
 
-        if (tick_end - tick_start < frame_len)
+        tick_len = tick_end - tick_start;
+
+        recent_frames[rIndex++] = tick_len;
+
+        if (rIndex >= frame_sample_count)
+            rIndex = 0;
+
+        max_len = 0;
+        render_time = 0;
+        for (int i = 0; i < frame_sample_count; ++i)
         {
-            Sleep( frame_len - (tick_end - tick_start) );
+            max_len = max_len > recent_frames[i] ? max_len : recent_frames[i];
+            render_time += recent_frames[i];
+        }
+
+        /* avg_len = render_time / frame_sample_count; */
+
+        /* We'd rather drop frames than let the game slow down.
+           So we get aggressive with the timers and drop the renderer framerate
+           to what the PC can handle so the game can continue to run at full speed.
+        */
+        avg_len = max_len * 3 / 2;
+
+        frame_len = avg_len < target_frame_len ? target_frame_len : avg_len;
+
+        if (tick_len < frame_len)
+        {
+            Sleep(frame_len - (tick_start - timeGetTime()));
         }
     }
+    free(recent_frames);
 
     return 0;
 }
@@ -317,7 +360,6 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
             }
             else
             {
-
                 /* Linear scaling using integer math
                  * Since the scaling pattern for x will aways be the same, the pattern itself gets pre-calculated
                  * and stored in an array.
@@ -426,12 +468,11 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
                     free(pattern);
                 }
             }
-
             LeaveCriticalSection(&this->lock);
         }
     }
 
-    dprintf("IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%d, lpDDBltFx=%p) -> %08X\n", this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
+    dprintf("IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%08X, lpDDBltFx=%p) -> %08X\n", this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
 
     dprintf(" dwFlags:\n");
 
