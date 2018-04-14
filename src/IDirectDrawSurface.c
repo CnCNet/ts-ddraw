@@ -49,34 +49,27 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     DWORD tick_start = 0;
     DWORD tick_end = 0;
-    DWORD frame_len = 1000.0f / TargetFPS;
-    TargetFrameLen = frame_len;
+    TargetFrameLen = 1000 / TargetFPS;
     DWORD tick_len = 0;
+    DWORD showFPS = 0;
 
-    DWORD max_len = frame_len;
-    DWORD avg_len = frame_len;
-    DWORD frame_sample_count;
-
-    switch (FrameDropMode)
-    {
-    case FRAMEDROP_NONE:   frame_sample_count = 1; break;
-    case FRAMEDROP_MEDIUM: frame_sample_count = 10; break;
-    case FRAMEDROP_ULTRA:  frame_sample_count = 60; break;
-    case FRAMEDROP_AGGRESSIVE: default: frame_sample_count = 30;
-    }
-
-    DWORD *recent_frames = malloc(sizeof(DWORD) * frame_sample_count);
+    DWORD avg_len = TargetFrameLen;
+    DWORD frame_sample_count = 30;
+    DWORD recent_frames[frame_sample_count];
     DWORD render_time = 0;
+    DWORD dropFrames = 0;
+    DWORD totalDroppedFrames = 0;
 
     int rIndex;
     for (rIndex = 0; rIndex < frame_sample_count; rIndex++)
     {
-        recent_frames[rIndex] = frame_len;
+        recent_frames[rIndex] = TargetFrameLen;
     }
     rIndex = 0;
 
     RECT textRect = (RECT){0,0,0,0};
     char fpsString[256] = {0};
+    DWORD avg_fps = 0;
 
 #ifdef _DEBUG
     double frame_time = 0, real_time = timeGetTime();
@@ -87,12 +80,18 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     {
         tick_start = timeGetTime();
 
+
         EnterCriticalSection(&this->lock);
 
+        if (dropFrames > 0)
+            dropFrames--;
+        else
+        {
+            BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
 
-        BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+        }
 
-        if (DrawFPS)
+        if (showFPS > tick_start || DrawFPS)
             DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);
 
         EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
@@ -102,9 +101,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         tick_end = timeGetTime();
 
 #ifdef _DEBUG
-
         frame_time += (tick_end - tick_start);
         frames++;
+
         if (frames >= TargetFPS)
         {
             printf("Timed FPS: %.2f\n", 1000.0f / (frame_time / frames));
@@ -116,43 +115,40 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         tick_len = tick_end - tick_start;
 
-        recent_frames[rIndex++] = tick_len;
+        if (dropFrames == 0)
+        {
+            recent_frames[rIndex++] = tick_len;
 
-        if (rIndex >= frame_sample_count)
-            rIndex = 0;
+            if (rIndex >= frame_sample_count)
+                rIndex = 0;
+        }
 
-        max_len = 0;
         render_time = 0;
         for (int i = 0; i < frame_sample_count; ++i)
         {
-            max_len = max_len > recent_frames[i] ? max_len : recent_frames[i];
-            render_time += recent_frames[i];
+            render_time += recent_frames[i] < TargetFrameLen ? TargetFrameLen : recent_frames[i];
         }
 
         avg_len = render_time / frame_sample_count;
+        avg_fps = 1000 / avg_len;
 
-        /* We'd rather drop frames than let the game slow down.
-           So we get aggressive with the timers and drop the renderer framerate
-           to what the PC can handle so the game can continue to run at full speed.
-        */
-        if (FrameDropMode == FRAMEDROP_NONE)
-            avg_len = TargetFrameLen;
-        if (FrameDropMode == FRAMEDROP_AGGRESSIVE)
-            avg_len = max_len;
-        else if (FrameDropMode == FRAMEDROP_ULTRA)
-            avg_len = max_len * 3 / 2;
+        _snprintf(fpsString, 254, "FPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
 
-        frame_len = avg_len < TargetFrameLen ? TargetFrameLen : avg_len;
-
-        _snprintf(fpsString, 254, "FPS: %li\nTGT: %li", 1000 / frame_len, TargetFPS);
-
-        if (tick_len < frame_len)
+        if (tick_len < TargetFrameLen)
         {
-            Sleep(frame_len - (tick_start - timeGetTime()));
+            Sleep(TargetFrameLen - (tick_start - timeGetTime()));
+        }
+        else if (tick_len > TargetFrameLen)
+        {
+            dropFrames = (tick_len + TargetFrameLen) / TargetFrameLen;
+
+            if (dropFrames > TargetFPS / 30)
+            {
+                showFPS = tick_end + tick_len + 2000;
+            }
+            totalDroppedFrames += dropFrames;
         }
     }
-    free(recent_frames);
-
     return 0;
 }
 

@@ -39,9 +39,8 @@ bool DrawFPS = true;
 bool DrawFPS = false;
 #endif
 
-DWORD TargetFPS = 60;
-DWORD TargetFrameLen = 16;
-DWORD FrameDropMode = FRAMEDROP_AGGRESSIVE;
+DWORD TargetFPS = 120;
+DWORD TargetFrameLen = 8;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {
@@ -81,21 +80,6 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
             TargetFrameLen = 1000.0f / TargetFPS;
         }
     }
-    buf[0] = '\0';
-    GetEnvironmentVariable("DDRAW_FRAMEDROP_NONE", buf, sizeof buf);
-    if (buf[0]) FrameDropMode = FRAMEDROP_NONE;
-
-    buf[0] = '\0';
-    GetEnvironmentVariable("DDRAW_FRAMEDROP_MEDIUM", buf, sizeof buf);
-    if (buf[0]) FrameDropMode = FRAMEDROP_MEDIUM;
-
-    buf[0] = '\0';
-    GetEnvironmentVariable("DDRAW_FRAMEDROP_AGGRESSIVE", buf, sizeof buf);
-    if (buf[0]) FrameDropMode = FRAMEDROP_AGGRESSIVE;
-
-    buf[0] = '\0';
-    GetEnvironmentVariable("DDRAW_FRAMEDROP_ULTRA", buf, sizeof buf);
-    if (buf[0]) FrameDropMode = FRAMEDROP_ULTRA;
 
     // unfortunately necessary to avoid random access violations
     SetProcessAffinityMask(GetCurrentProcess(), 1);
