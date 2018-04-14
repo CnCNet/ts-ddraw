@@ -15,8 +15,8 @@
  */
 
 #include <windows.h>
-#include <ddraw.h>
 #include <stdbool.h>
+#include "ddraw.h"
 
 #ifndef _MAIN_
 #define _MAIN_

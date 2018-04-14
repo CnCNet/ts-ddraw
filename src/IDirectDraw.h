@@ -15,7 +15,7 @@
  */
 
 #include <windows.h>
-#include <ddraw.h>
+#include "ddraw.h"
 #include "main.h"
 
 #ifndef IDIRECTDRAW_H
@@ -60,7 +60,7 @@ struct IDirectDrawImpl
     IDirectDrawImpl* dd;
     DEVMODE winMode;
     DEVMODE mode;
-    LRESULT CALLBACK (*wndProc)(HWND, UINT, WPARAM, LPARAM);
+    LRESULT (CALLBACK *wndProc)(HWND, UINT, WPARAM, LPARAM);
     int screenWidth;
     int screenHeight;
     RECT winRect;

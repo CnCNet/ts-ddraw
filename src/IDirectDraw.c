@@ -593,7 +593,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             this->dwFlags = dwFlags;
             this->hWnd = hWnd;
             this->hDC = GetDC(this->hWnd);
-            this->wndProc = (LRESULT CALLBACK (*)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
+            this->wndProc = (LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
 
             SetWindowLong(this->hWnd, GWL_WNDPROC, (LONG)WndProc);
 

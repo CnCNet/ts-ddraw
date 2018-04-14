@@ -25,7 +25,7 @@ int TRACE = 1;
 int FPS = 0;
 
 static HANDLE real_dll = NULL;
-static HRESULT WINAPI (*real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*) = NULL;
+static HRESULT (WINAPI *real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*) = NULL;
 #else
 BOOL WINAPI DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
 #endif
@@ -68,7 +68,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     {
         real_dll = LoadLibrary("system32\\ddraw.dll");
         dprintf(" real_dll = %p\n", real_dll);
-        real_DirectDrawCreate = (HRESULT WINAPI (*)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*))GetProcAddress(real_dll, "DirectDrawCreate");
+        real_DirectDrawCreate = (HRESULT(WINAPI *)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*))GetProcAddress(real_dll, "DirectDrawCreate");
         dprintf(" real_DirectDrawCreate = %p\n", real_DirectDrawCreate);
         real_DirectDrawCreate(lpGUID, &ddraw->real, pUnkOuter);
     }
