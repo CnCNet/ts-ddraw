@@ -18,7 +18,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ddraw.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="src\IDirectDraw.h" />
     <ClInclude Include="src\IDirectDrawClipper.h" />
     <ClInclude Include="src\IDirectDrawSurface.h" />
