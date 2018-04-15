@@ -402,7 +402,7 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
                     pattern[pattern_idx] = (scale_pattern){ ONCE, 0, 0, 1 };
 
                     /* Build the pattern! */
-                    for (unsigned int x = 1; x < dst_w; x++) {
+                    for (int x = 1; x < dst_w; x++) {
                         src_x = (x * x_ratio) >> 16;
                         if (src_x == last_src_x)
                         {
@@ -444,7 +444,7 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
                     uint16_t *d, *s, v;
                     int count = 0;
 
-                    for (unsigned int y = 0; y < dst_h; y++) {
+                    for (int y = 0; y < dst_h; y++) {
 
                         dest_base = dst.left + this->width * (y + dst.top);
 
