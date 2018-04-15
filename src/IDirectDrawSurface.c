@@ -81,22 +81,20 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         tick_start = timeGetTime();
 
 
-        EnterCriticalSection(&this->lock);
-
         if (dropFrames > 0)
             dropFrames--;
         else
         {
+            EnterCriticalSection(&this->lock);
             BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
 
+            if (showFPS > tick_start || DrawFPS)
+                DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);
+
+            EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
+
+            LeaveCriticalSection(&this->lock);
         }
-
-        if (showFPS > tick_start || DrawFPS)
-            DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);
-
-        EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
-
-        LeaveCriticalSection(&this->lock);
 
         tick_end = timeGetTime();
 
@@ -121,22 +119,24 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
             if (rIndex >= frame_sample_count)
                 rIndex = 0;
+
+            render_time = 0;
+            for (int i = 0; i < frame_sample_count; ++i)
+            {
+                render_time += recent_frames[i] < TargetFrameLen ? TargetFrameLen : recent_frames[i];
+            }
+
+            avg_len = render_time / frame_sample_count;
+            avg_fps = 1000 / avg_len;
+
+            _snprintf(fpsString, 254, "FPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
         }
-
-        render_time = 0;
-        for (int i = 0; i < frame_sample_count; ++i)
-        {
-            render_time += recent_frames[i] < TargetFrameLen ? TargetFrameLen : recent_frames[i];
-        }
-
-        avg_len = render_time / frame_sample_count;
-        avg_fps = 1000 / avg_len;
-
-        _snprintf(fpsString, 254, "FPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
 
         if (tick_len < TargetFrameLen)
         {
-            Sleep(TargetFrameLen - (tick_start - timeGetTime()));
+            int sleepTime = timeGetTime() - tick_start;
+            if (sleepTime < TargetFrameLen)
+                Sleep(TargetFrameLen - (timeGetTime() - tick_start));
         }
         else if (tick_len > TargetFrameLen)
         {
