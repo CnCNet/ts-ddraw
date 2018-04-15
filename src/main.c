@@ -39,7 +39,7 @@ bool DrawFPS = true;
 bool DrawFPS = false;
 #endif
 
-DWORD TargetFPS = 120;
+DWORD TargetFPS = 125;
 DWORD TargetFrameLen = 8;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
@@ -77,7 +77,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         if (sscanf(buf, "%i", &tfps) && tfps > 0)
         {
             TargetFPS = (DWORD)tfps;
-            TargetFrameLen = 1000.0f / TargetFPS;
+            TargetFrameLen = 1000 / TargetFPS;
         }
     }
 

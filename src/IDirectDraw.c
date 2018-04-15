@@ -564,13 +564,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if ((wParam == VK_PRIOR) && (GetAsyncKeyState(VK_RCONTROL) & 0x8000))
             {
-                TargetFPS = TargetFPS + 15;
+                TargetFPS = TargetFPS + 20;
                 TargetFrameLen = 1000.0f / TargetFPS;
             }
 
             if ((wParam == VK_NEXT) && (GetAsyncKeyState(VK_RCONTROL) & 0x8000))
             {
-                TargetFPS = TargetFPS > 15 ? TargetFPS - 15 : TargetFPS;
+                TargetFPS = TargetFPS > 20 ? TargetFPS - 20 : TargetFPS;
                 TargetFrameLen = 1000.0f / TargetFPS;
             }
 

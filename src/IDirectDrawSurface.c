@@ -56,7 +56,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD avg_len = TargetFrameLen;
     DWORD recent_frames[FRAME_SAMPLES] = { 16 };
     DWORD render_time = 0;
-    DWORD dropFrames = 0;
+    int dropFrames = 0;
     DWORD totalDroppedFrames = 0;
     int rIndex = 0;
 
@@ -87,6 +87,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
 
             LeaveCriticalSection(&this->lock);
+            dropFrames = -1;
         }
 
         tick_end = timeGetTime();
@@ -106,7 +107,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         tick_len = tick_end - tick_start;
 
-        if (dropFrames == 0)
+        if (dropFrames == -1)
         {
             recent_frames[rIndex++] = tick_len;
 
@@ -127,13 +128,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         if (tick_len < TargetFrameLen)
         {
-            int sleepTime = timeGetTime() - tick_start;
+            DWORD sleepTime = timeGetTime() - tick_start;
             if (sleepTime < TargetFrameLen)
                 Sleep(TargetFrameLen - (timeGetTime() - tick_start));
         }
         else if (tick_len > TargetFrameLen)
         {
-            dropFrames = (tick_len + TargetFrameLen) / TargetFrameLen;
+            dropFrames = (tick_len * 2) / TargetFrameLen;
 
             if (dropFrames > TargetFPS / 30)
             {
@@ -389,7 +390,7 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
                 scale_pattern *pattern = malloc((dst_w + 1) * (sizeof(scale_pattern)));
                 int pattern_idx = 0;
-                int last_src_x = 0;
+                unsigned int last_src_x = 0;
 
                 if (pattern != NULL)
                 {
