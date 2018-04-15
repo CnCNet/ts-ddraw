@@ -20,6 +20,8 @@
 #include "main.h"
 #include "IDirectDraw.h"
 
+#define FRAME_SAMPLES 30
+
 typedef struct IDirectDrawSurfaceImplVtbl IDirectDrawSurfaceImplVtbl;
 typedef struct IDirectDrawSurfaceImpl IDirectDrawSurfaceImpl;
 

@@ -54,14 +54,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD showFPS = 0;
 
     DWORD avg_len = TargetFrameLen;
-    DWORD frame_sample_count = 30;
-    DWORD recent_frames[frame_sample_count];
+    DWORD recent_frames[FRAME_SAMPLES];
     DWORD render_time = 0;
     DWORD dropFrames = 0;
     DWORD totalDroppedFrames = 0;
 
     int rIndex;
-    for (rIndex = 0; rIndex < frame_sample_count; rIndex++)
+    for (rIndex = 0; rIndex < FRAME_SAMPLES; rIndex++)
     {
         recent_frames[rIndex] = TargetFrameLen;
     }
@@ -117,16 +116,16 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         {
             recent_frames[rIndex++] = tick_len;
 
-            if (rIndex >= frame_sample_count)
+            if (rIndex >= FRAME_SAMPLES)
                 rIndex = 0;
 
             render_time = 0;
-            for (int i = 0; i < frame_sample_count; ++i)
+            for (int i = 0; i < FRAME_SAMPLES; ++i)
             {
                 render_time += recent_frames[i] < TargetFrameLen ? TargetFrameLen : recent_frames[i];
             }
 
-            avg_len = render_time / frame_sample_count;
+            avg_len = render_time / FRAME_SAMPLES;
             avg_fps = 1000 / avg_len;
 
             _snprintf(fpsString, 254, "FPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
