@@ -54,17 +54,11 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD showFPS = 0;
 
     DWORD avg_len = TargetFrameLen;
-    DWORD recent_frames[FRAME_SAMPLES];
+    DWORD recent_frames[FRAME_SAMPLES] = { 16 };
     DWORD render_time = 0;
     DWORD dropFrames = 0;
     DWORD totalDroppedFrames = 0;
-
-    int rIndex;
-    for (rIndex = 0; rIndex < FRAME_SAMPLES; rIndex++)
-    {
-        recent_frames[rIndex] = TargetFrameLen;
-    }
-    rIndex = 0;
+    int rIndex = 0;
 
     RECT textRect = (RECT){0,0,0,0};
     char fpsString[256] = {0};
