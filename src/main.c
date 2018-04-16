@@ -21,7 +21,7 @@
 #ifdef _DEBUG
 int PROXY = 0;
 int VERBOSE = 1;
-int TRACE = 1;
+int TRACE = 0;
 int FPS = 0;
 
 static HANDLE real_dll = NULL;
