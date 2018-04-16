@@ -21,7 +21,7 @@
 #ifdef _DEBUG
 int PROXY = 0;
 int VERBOSE = 1;
-int TRACE = 0;
+int TRACE = 1;
 int FPS = 0;
 
 static HANDLE real_dll = NULL;
@@ -65,7 +65,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         setvbuf(stdout, NULL, _IONBF, 0);
     }
 #endif
-    dprintf("DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
+	dprintf("--> DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
 
     GetEnvironmentVariable("DDRAW_DRAW_FPS", buf, sizeof buf);
     if (buf[0]) DrawFPS = true;
@@ -103,7 +103,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
 
     *lplpDD = (IDirectDraw *)ddraw;
     dprintf(" lplpDD = %p\n", *lplpDD);
-
+	dprintf("<-- DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
     return DD_OK;
 }
 
@@ -115,7 +115,10 @@ int dprintf(const char *fmt, ...)
 
     if (!TRACE) return 0;
 
-    fprintf(stdout, "[%08X] ", (int)GetCurrentThread());
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+
+    fprintf(stdout, "[%08X] %02d:%02d:%02d.%03d ", (int)GetCurrentThread(), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
     va_start(args, fmt);
     ret = vfprintf(stdout, fmt, args);
