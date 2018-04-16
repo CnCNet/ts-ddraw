@@ -50,6 +50,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     DWORD tick_start = 0;
     DWORD tick_end = 0;
     TargetFrameLen = 1000 / TargetFPS;
+    DWORD startTargetFPS = TargetFPS;
     DWORD tick_len = 0;
     DWORD showFPS = 0;
 
@@ -124,6 +125,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             avg_fps = 1000 / avg_len;
 
             _snprintf(fpsString, 254, "FPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
+        }
+
+        if (startTargetFPS != TargetFPS)
+        {
+            // TargetFPS was changed externally
+            TargetFrameLen = 1000 / TargetFPS;
+            startTargetFPS = TargetFPS;
         }
 
         if (tick_len < TargetFrameLen)

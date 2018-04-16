@@ -434,6 +434,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     IDirectDrawImpl *this = ddraw;
 
+    static DWORD rememberFPS = -1;
+
     switch(uMsg)
     {
         //Workaround for invisible menu on Load/Save/Delete in Tiberian Sun
@@ -467,10 +469,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             /* keep the cursor restrained after alt-tabbing */
             if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
             {
+                if (rememberFPS != -1)
+                    TargetFPS = rememberFPS;
+
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
             }
             else if (wParam == WA_INACTIVE)
             {
+                rememberFPS = TargetFPS;
+                TargetFPS = 10;
                 mouse_unlock();
             }
 
