@@ -400,7 +400,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         this->height = height;
         this->bpp = bpp;
 
-		if (!IsWindowsXp)
+		if (!IsWindowsXp())
 		{
 			PIXELFORMATDESCRIPTOR pfd;
 
@@ -675,7 +675,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
 
             SetWindowLong(this->hWnd, GWL_WNDPROC, (LONG)WndProc);
 			
-			if (!IsWindowsXp)
+			if (!IsWindowsXp())
 			{
 				PIXELFORMATDESCRIPTOR pfd;
 
