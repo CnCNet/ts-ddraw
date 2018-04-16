@@ -306,3 +306,11 @@ void dump_ddbltfx(LPDDBLTFX lpDDBltFx)
     dprintf("       lpDDBltFx->dwRotationAngle  = %08X\n", (int)lpDDBltFx->dwRotationAngle);
     dprintf("       lpDDBltFx->dwFillColor      = %08X\n", (int)lpDDBltFx->dwFillColor);
 }
+
+BOOL IsWindowsXp()
+{
+	DWORD version = GetVersion();
+	DWORD major = (DWORD)(LOBYTE(LOWORD(version)));
+	DWORD minor = (DWORD)(HIBYTE(LOWORD(version)));
+	return ((major == 5) && (minor == 1));
+}

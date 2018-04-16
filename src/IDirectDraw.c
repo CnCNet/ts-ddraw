@@ -400,20 +400,23 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         this->height = height;
         this->bpp = bpp;
 
-        PIXELFORMATDESCRIPTOR pfd;
+		if (!IsWindowsXp)
+		{
+			PIXELFORMATDESCRIPTOR pfd;
 
-        memset(&pfd, 0, sizeof(pfd));
-        pfd.nSize = sizeof(pfd);
-        pfd.nVersion = 1;
-        pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
-        pfd.iPixelType = PFD_TYPE_RGBA;
-        pfd.cColorBits = this->bpp;
-        pfd.iLayerType = PFD_MAIN_PLANE;
-        if (!SetPixelFormat( this->hDC, ChoosePixelFormat( this->hDC, &pfd ), &pfd ))
-        {
-            dprintf("SetPixelFormat failed!\n");
-            ret = DDERR_UNSUPPORTED;
-        }
+			memset(&pfd, 0, sizeof(pfd));
+			pfd.nSize = sizeof(pfd);
+			pfd.nVersion = 1;
+			pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+			pfd.iPixelType = PFD_TYPE_RGBA;
+			pfd.cColorBits = this->bpp;
+			pfd.iLayerType = PFD_MAIN_PLANE;
+			if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
+			{
+				dprintf("SetPixelFormat failed!\n");
+				ret = DDERR_UNSUPPORTED;
+			}
+		}
 
         SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
 
@@ -671,21 +674,24 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             this->wndProc = (LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
 
             SetWindowLong(this->hWnd, GWL_WNDPROC, (LONG)WndProc);
+			
+			if (!IsWindowsXp)
+			{
+				PIXELFORMATDESCRIPTOR pfd;
 
-            PIXELFORMATDESCRIPTOR pfd;
-
-            memset(&pfd, 0, sizeof(pfd));
-            pfd.nSize = sizeof(pfd);
-            pfd.nVersion = 1;
-            pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
-            pfd.iPixelType = PFD_TYPE_RGBA;
-            pfd.cColorBits = this->bpp;
-            pfd.iLayerType = PFD_MAIN_PLANE;
-            if (!SetPixelFormat( this->hDC, ChoosePixelFormat( this->hDC, &pfd ), &pfd ))
-            {
-                dprintf("SetPixelFormat failed!\n");
-                ret = DDERR_UNSUPPORTED;
-            }
+				memset(&pfd, 0, sizeof(pfd));
+				pfd.nSize = sizeof(pfd);
+				pfd.nVersion = 1;
+				pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+				pfd.iPixelType = PFD_TYPE_RGBA;
+				pfd.cColorBits = this->bpp;
+				pfd.iLayerType = PFD_MAIN_PLANE;
+				if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
+				{
+					dprintf("SetPixelFormat failed!\n");
+					ret = DDERR_UNSUPPORTED;
+				}
+			}
 
             if (this->screenWidth == 0)
             {

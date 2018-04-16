@@ -49,6 +49,7 @@ void dump_ddsurfacedesc(LPDDSURFACEDESC);
 void dump_ddpixelformat(LPDDPIXELFORMAT);
 void dump_ddbltfx(LPDDBLTFX);
 void DebugPrint(const char *format, ...);
+BOOL IsWindowsXp();
 
 bool GameHandlesClose;
 bool DrawFPS;
