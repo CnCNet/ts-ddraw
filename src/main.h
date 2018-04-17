@@ -56,6 +56,6 @@ bool DrawFPS;
 DWORD TargetFPS;
 DWORD TargetFrameLen;
 
-#define debug_(format, ...) DebugPrint("xDBG " format, ##__VA_ARGS__)
+#define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)
 
 #endif
