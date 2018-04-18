@@ -198,11 +198,11 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->hDC = CreateCompatibleDC(this->dd->hDC);
 
     /* Tiberian Sun sometimes tries to access lines that are past the bottom of the screen */
-    int guardLines = 200;
+    int guardLines = 0; // doesn't work (yet)
 
-    this->overlay = calloc(1, this->lPitch * (this->height + guardLines) * this->lXPitch);
+    this->overlay = calloc(1, this->lPitch * (this->height + guardLines));
 
-    this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * (this->height + guardLines) * this->lXPitch));
+    this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * (this->height + guardLines)));
     this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
     this->bmi->bmiHeader.biWidth = this->width;
     this->bmi->bmiHeader.biHeight = -this->height;
