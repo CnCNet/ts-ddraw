@@ -299,6 +299,8 @@ void dump_ddpixelformat(LPDDPIXELFORMAT pfd)
 
 void dump_ddbltfx(LPDDBLTFX lpDDBltFx)
 {
+	if (!VERBOSE) return;
+
     dprintf("       lpDDBltFx->dwSize           = %d\n", (int)lpDDBltFx->dwSize);
     dprintf("       lpDDBltFx->dwDDFX           = %08X\n", (int)lpDDBltFx->dwDDFX);
     dprintf("       lpDDBltFx->dwROP            = %08X\n", (int)lpDDBltFx->dwROP);

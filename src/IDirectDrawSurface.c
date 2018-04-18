@@ -508,7 +508,8 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
         }
     }
 
-    dprintf(" dwFlags:\n");
+	if (dwFlags)
+		dprintf(" dwFlags:\n");
 
     if (dwFlags & DDBLT_COLORFILL)
     {
@@ -550,18 +551,20 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
         dprintf("  DDBLT_ROTATIONANGLE\n");
     }
 
-    if (lpDestRect)
-    {
-        dprintf(" dest: l: %d t: %d r: %d b: %d\n", (int)lpDestRect->left, (int)lpDestRect->top, (int)lpDestRect->right, (int)lpDestRect->bottom);
-        dprintf(" dest: w: %d h: %d bpp: %d\n", (int)this->width, (int)this->height, (int)this->bpp);
-    }
+	if (VERBOSE)
+	{
+		if (lpDestRect)
+		{
+			dprintf(" dest: l: %d t: %d r: %d b: %d\n", (int)lpDestRect->left, (int)lpDestRect->top, (int)lpDestRect->right, (int)lpDestRect->bottom);
+			dprintf(" dest: w: %d h: %d bpp: %d\n", (int)this->width, (int)this->height, (int)this->bpp);
+		}
 
-    if (lpSrcRect)
-    {
-        dprintf(" src: l: %d t: %d r: %d b: %d\n", (int)lpSrcRect->left, (int)lpSrcRect->top, (int)lpSrcRect->right, (int)lpSrcRect->bottom);
-        dprintf(" src: w: %d h: %d bpp: %d\n", (int)srcImpl->width, (int)srcImpl->height, (int)srcImpl->bpp);
-    }
-
+		if (lpSrcRect)
+		{
+			dprintf(" src: l: %d t: %d r: %d b: %d\n", (int)lpSrcRect->left, (int)lpSrcRect->top, (int)lpSrcRect->right, (int)lpSrcRect->bottom);
+			dprintf(" src: w: %d h: %d bpp: %d\n", (int)srcImpl->width, (int)srcImpl->height, (int)srcImpl->bpp);
+		}
+	}
     if (lpDDBltFx)
     {
         dump_ddbltfx(lpDDBltFx);
