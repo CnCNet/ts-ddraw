@@ -62,7 +62,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     if (TRACE)
     {
         freopen("stdout.txt", "w", stdout);
-        setvbuf(stdout, NULL, _IONBF, 0);
+        setvbuf(stdout, NULL, _IOLBF, 1024);
     }
 #endif
 	dprintf("--> DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
