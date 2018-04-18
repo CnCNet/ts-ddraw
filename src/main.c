@@ -118,7 +118,7 @@ int dprintf(const char *fmt, ...)
 	SYSTEMTIME st;
 	GetLocalTime(&st);
 
-    fprintf(stdout, "[%08X] %02d:%02d:%02d.%03d ", (int)GetCurrentThread(), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    fprintf(stdout, "[%d] %02d:%02d:%02d.%03d ", GetCurrentThreadId(), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
     va_start(args, fmt);
     ret = vfprintf(stdout, fmt, args);
