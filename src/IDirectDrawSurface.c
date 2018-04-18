@@ -205,7 +205,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * (this->height + guardLines) * this->lXPitch));
     this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
     this->bmi->bmiHeader.biWidth = this->width;
-    this->bmi->bmiHeader.biHeight = -(this->height + guardLines);
+    this->bmi->bmiHeader.biHeight = -this->height;
     this->bmi->bmiHeader.biPlanes = 1;
     this->bmi->bmiHeader.biBitCount = this->bpp;
     this->bmi->bmiHeader.biCompression = BI_RGB;
