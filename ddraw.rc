@@ -1,6 +1,12 @@
+#define vstr(v) vxstr(v)
+#define vxstr(a,b,c,d) str(a##.##b##.##c##.##d)
+#define str(s) #s
+
+#define VERSION 1,1,2,2
+
 1 VERSIONINFO
-FILEVERSION 1,1,2,1
-PRODUCTVERSION 1,1,2,1
+FILEVERSION VERSION
+PRODUCTVERSION VERSION
 {
     BLOCK "StringFileInfo"
     {
@@ -8,7 +14,7 @@ PRODUCTVERSION 1,1,2,1
         {
             VALUE "CompanyName", "cncnet.org"
             VALUE "FileDescription", "DirectDraw replacement for Tiberian Sun and Red Alert 2"
-            VALUE "FileVersion", "1.1.2.1"
+            VALUE "FileVersion", vstr(VERSION)
             VALUE "InternalName", "ddraw"
             VALUE "LegalCopyright", "Copyright (c) 2010-2018"
             VALUE "LegalTrademarks", ""
