@@ -85,8 +85,11 @@
       <ModuleDefinitionFile>ddraw.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>if not exist "$(LocalDebuggerCommand)" exit
-copy "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)$(TargetFileName)"</Command>
+      <Command>
+if exist "$(LocalDebuggerCommand)" if exist "$(LocalDebuggerWorkingDirectory)"  (
+    copy "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)$(TargetFileName)"
+)
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
