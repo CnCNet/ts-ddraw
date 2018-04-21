@@ -36,7 +36,9 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
     RECT pos;
     GetWindowRect(hWnd, &pos);
 
-    BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
+	this->dd->render.invalidate = TRUE;
+
+	BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
 
     ReleaseDC(hWnd, hDC);
 
@@ -80,7 +82,26 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         else
         {
             EnterCriticalSection(&this->lock);
-            BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+
+			if (this->dd->render.stretched)
+			{
+				if (this->dd->render.invalidate)
+				{
+					this->dd->render.invalidate = FALSE;
+					RECT rc = { 0, 0, this->dd->render.width, this->dd->render.height };
+					FillRect(this->dd->hDC, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
+				}
+				else
+				{
+					StretchBlt(this->dd->hDC,
+						this->dd->render.viewport.x, this->dd->render.viewport.y,
+						this->dd->render.viewport.width, this->dd->render.viewport.height,
+						this->hDC, 0, 0, this->dd->width, this->dd->height, SRCCOPY);
+				}
+			}
+			else
+				BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 
+					this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
 
             if (showFPS > tick_start || DrawFPS)
                 DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);

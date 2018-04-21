@@ -381,6 +381,77 @@ static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
     return ret;
 }
 
+SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
+{
+	this->width = width;
+	this->height = height;
+
+	if (this->render.stretchFullscreen)
+	{
+		this->render.width = this->screenWidth;
+		this->render.height = this->screenHeight;
+	}
+
+	if (this->render.width < this->width)
+		this->render.width = this->width;
+
+	if (this->render.height < this->height)
+		this->render.height = this->height;
+
+	this->render.viewport.width = this->render.width;
+	this->render.viewport.height = this->render.height;
+	this->render.viewport.x = 0;
+	this->render.viewport.y = 0;
+
+	if (this->render.boxing)
+	{
+		this->render.viewport.width = this->width;
+		this->render.viewport.height = this->height;
+		
+		for (int i = 20; i-- > 1;)
+		{
+			if (this->width * i <= this->render.width && this->height * i <= this->render.height)
+			{
+				this->render.viewport.width *= i;
+				this->render.viewport.height *= i;
+				break;
+			}
+		}
+
+		this->render.viewport.y = this->render.height / 2 - this->render.viewport.height / 2;
+		this->render.viewport.x = this->render.width / 2 - this->render.viewport.width / 2;
+	}
+	else if (this->render.maintas)
+	{
+		this->render.viewport.width = this->render.width;
+		this->render.viewport.height = ((float)this->height / this->width) * this->render.viewport.width;
+
+		if (this->render.viewport.height > this->render.height)
+		{
+			this->render.viewport.width =
+				((float)this->render.viewport.width / this->render.viewport.height) * this->render.height;
+
+			this->render.viewport.height = this->render.height;
+		}
+
+		this->render.viewport.y = this->render.height / 2 - this->render.viewport.height / 2;
+		this->render.viewport.x = this->render.width / 2 - this->render.viewport.width / 2;
+	}
+
+	this->render.scaleW = ((float)this->render.viewport.width / this->width);
+	this->render.scaleH = ((float)this->render.viewport.height / this->height);
+
+	this->render.stretched =
+		this->render.viewport.width != this->width ||
+		this->render.viewport.height != this->height ||
+		this->render.viewport.x != 0 ||
+		this->render.viewport.y != 0;
+
+	SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
+	
+	this->render.invalidate = TRUE;
+}
+
 static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWORD height, DWORD bpp)
 {
     ENTER;
@@ -396,8 +467,18 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         if (bpp != 16)
             return DDERR_INVALIDMODE;
 
-        this->width = width;
-        this->height = height;
+
+		// use these to enable stretching for testing
+		// works only for spawner games and only fullscreen right now
+
+		//this->render.width = 1280;
+		//this->render.height = 800;
+		//this->render.stretchFullscreen = TRUE;
+		//this->render.boxing = TRUE;
+		//this->render.maintas = TRUE;
+
+		SetWindowSize(this, width, height);
+
         this->bpp = bpp;
 
 		if (!IsWindowsXp())
@@ -418,17 +499,29 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 			}
 		}
 
-        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->width, this->height, SWP_SHOWWINDOW);
-
         this->mode.dmSize = sizeof(this->mode);
         this->mode.dmFields = DM_PELSWIDTH|DM_PELSHEIGHT;
-        this->mode.dmPelsWidth = this->width;
-        this->mode.dmPelsHeight = this->height;
+        this->mode.dmPelsWidth = this->render.width;
+        this->mode.dmPelsHeight = this->render.height;
 
         if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
-            dprintf("    mode change failed!\n");
-            return DDERR_INVALIDMODE;
+			// odd height or half screenWidth/Height trigger scaling on invalid resolutions (hidden feature)
+			if (this->height % 2 != 0 || (this->width * 2 == this->screenWidth && this->height * 2 == this->screenHeight))
+			{
+				this->mode.dmPelsWidth = this->render.width = this->screenWidth;
+				this->mode.dmPelsHeight = this->render.height = this->screenHeight;
+
+				if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+					return DDERR_INVALIDMODE;
+
+				SetWindowSize(this, width, height);
+			}
+			else
+			{
+				dprintf("    mode change failed!\n");
+				return DDERR_INVALIDMODE;
+			}
         }
 
         POINT p = { 0, 0 };
@@ -436,10 +529,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         GetClientRect(this->dd->hWnd, &this->winRect);
         OffsetRect(&this->winRect, p.x, p.y);
 
-        /* restrain the cursor to the game in fullscreen */
-        RECT rcClip;
-        GetWindowRect(this->hWnd, &rcClip);
-        ClipCursor(&rcClip);
+		mouse_lock(this->hWnd);
     }
 
     dprintf("<-- IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d) -> %08X\n", this, (int)width, (int)height, (int)bpp, (int)ret);
@@ -462,6 +552,12 @@ void mouse_lock(HWND hWnd)
 
     SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
 
+	if (ddraw->render.stretched)
+	{
+		rc.right = ddraw->width;
+		rc.bottom = ddraw->height;
+	}
+
     ClipCursor(&rc);
     CaptureMouse = true;
     MouseIsLocked = true;
@@ -477,6 +573,12 @@ void center_mouse(HWND hWnd)
 {
     RECT size;
     GetClientRect(hWnd, &size);
+
+	if (ddraw->render.stretched)
+	{
+		size.right = ddraw->width;
+		size.bottom = ddraw->height;
+	}
 
     POINT pos = { 0, 0 };
     ClientToScreen(hWnd, &pos);
@@ -528,6 +630,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     TargetFPS = rememberFPS;
 
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
+				this->render.invalidate = TRUE;
             }
             else if (wParam == WA_INACTIVE)
             {

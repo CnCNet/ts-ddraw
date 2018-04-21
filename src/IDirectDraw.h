@@ -21,6 +21,8 @@
 #ifndef IDIRECTDRAW_H
 #define IDIRECTDRAW_H
 
+void mouse_lock(HWND hWnd);
+
 typedef struct IDirectDrawImplVtbl IDirectDrawImplVtbl;
 typedef struct IDirectDrawImpl IDirectDrawImpl;
 
@@ -73,6 +75,21 @@ struct IDirectDrawImpl
     int width;
     int height;
     int bpp;
+
+	struct
+	{
+		BOOL boxing;
+		BOOL stretchFullscreen;
+		BOOL maintas;
+		BOOL invalidate;
+		BOOL stretched;
+		int width;
+		int height;
+		float scaleH;
+		float scaleW;
+		struct { int width; int height; int x; int y; } viewport;
+
+	} render;
 };
 
 IDirectDrawImpl *IDirectDrawImpl_construct();
