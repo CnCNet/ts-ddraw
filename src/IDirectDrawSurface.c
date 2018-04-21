@@ -36,9 +36,9 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
     RECT pos;
     GetWindowRect(hWnd, &pos);
 
-	this->dd->render.invalidate = TRUE;
+    this->dd->render.invalidate = TRUE;
 
-	BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
+    BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
 
     ReleaseDC(hWnd, hDC);
 
@@ -83,25 +83,25 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         {
             EnterCriticalSection(&this->lock);
 
-			if (this->dd->render.stretched)
-			{
-				if (this->dd->render.invalidate)
-				{
-					this->dd->render.invalidate = FALSE;
-					RECT rc = { 0, 0, this->dd->render.width, this->dd->render.height };
-					FillRect(this->dd->hDC, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
-				}
-				else
-				{
-					StretchBlt(this->dd->hDC,
-						this->dd->render.viewport.x, this->dd->render.viewport.y,
-						this->dd->render.viewport.width, this->dd->render.viewport.height,
-						this->hDC, 0, 0, this->dd->width, this->dd->height, SRCCOPY);
-				}
-			}
-			else
-				BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 
-					this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+            if (this->dd->render.stretched)
+            {
+                if (this->dd->render.invalidate)
+                {
+                    this->dd->render.invalidate = FALSE;
+                    RECT rc = { 0, 0, this->dd->render.width, this->dd->render.height };
+                    FillRect(this->dd->hDC, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
+                }
+                else
+                {
+                    StretchBlt(this->dd->hDC,
+                        this->dd->render.viewport.x, this->dd->render.viewport.y,
+                        this->dd->render.viewport.width, this->dd->render.viewport.height,
+                        this->hDC, 0, 0, this->dd->width, this->dd->height, SRCCOPY);
+                }
+            }
+            else
+                BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 
+                    this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
 
             if (showFPS > tick_start || DrawFPS)
                 DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);
@@ -177,7 +177,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
 IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDImpl, LPDDSURFACEDESC lpDDSurfaceDesc)
 {
-	dprintf("--> IDirectDrawSurface::construct()\n");
+    dprintf("--> IDirectDrawSurface::construct()\n");
 
     IDirectDrawSurfaceImpl *this = calloc(1, sizeof(IDirectDrawSurfaceImpl));
     this->lpVtbl = &Vtbl;
@@ -250,13 +250,13 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     dump_ddsurfacedesc(lpDDSurfaceDesc);
     this->ref++;
 
-	dprintf("<-- IDirectDrawSurface::construct() -> %p\n", this);
+    dprintf("<-- IDirectDrawSurface::construct() -> %p\n", this);
     return this;
 }
 
 static HRESULT __stdcall _QueryInterface(IDirectDrawSurfaceImpl *this, REFIID riid, void **obj)
 {
-	dprintf("--> IDirectDrawSurface::QueryInterface(this=%p, riid=%08X, obj=%p)\n", this, (unsigned int)riid, obj);
+    dprintf("--> IDirectDrawSurface::QueryInterface(this=%p, riid=%08X, obj=%p)\n", this, (unsigned int)riid, obj);
 
     HRESULT ret = DDERR_UNSUPPORTED;
 
@@ -271,13 +271,13 @@ static HRESULT __stdcall _QueryInterface(IDirectDrawSurfaceImpl *this, REFIID ri
 
 static ULONG __stdcall _AddRef(IDirectDrawSurfaceImpl *this)
 {
-	dprintf("IDirectDrawSurface::AddRef(this=%p) -> %d\n", this, this->ref);
+    dprintf("IDirectDrawSurface::AddRef(this=%p) -> %d\n", this, this->ref);
     return this->ref;
 }
 
 static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
 {
-	dprintf("--> IDirectDrawSurface::Release(this=%p)\n", this);
+    dprintf("--> IDirectDrawSurface::Release(this=%p)\n", this);
 
     ULONG ret = --this->ref;
 
@@ -331,9 +331,9 @@ HRESULT __stdcall _AddOverlayDirtyRect(IDirectDrawSurfaceImpl *this, LPRECT a)
 static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, LPDIRECTDRAWSURFACE lpDDSrcSurface, LPRECT lpSrcRect, DWORD dwFlags, LPDDBLTFX lpDDBltFx)
 {
     ENTER;
-	dprintf(
-		"--> IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%08X, lpDDBltFx=%p)\n",
-		this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx);
+    dprintf(
+        "--> IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%08X, lpDDBltFx=%p)\n",
+        this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx);
 
     HRESULT ret = DD_OK;
     IDirectDrawSurfaceImpl *srcImpl = (IDirectDrawSurfaceImpl *)lpDDSrcSurface;
@@ -529,8 +529,8 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
         }
     }
 
-	if (dwFlags)
-		dprintf(" dwFlags:\n");
+    if (dwFlags)
+        dprintf(" dwFlags:\n");
 
     if (dwFlags & DDBLT_COLORFILL)
     {
@@ -572,28 +572,28 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
         dprintf("  DDBLT_ROTATIONANGLE\n");
     }
 
-	if (VERBOSE)
-	{
-		if (lpDestRect)
-		{
-			dprintf(" dest: l: %d t: %d r: %d b: %d\n", (int)lpDestRect->left, (int)lpDestRect->top, (int)lpDestRect->right, (int)lpDestRect->bottom);
-			dprintf(" dest: w: %d h: %d bpp: %d\n", (int)this->width, (int)this->height, (int)this->bpp);
-		}
+    if (VERBOSE)
+    {
+        if (lpDestRect)
+        {
+            dprintf(" dest: l: %d t: %d r: %d b: %d\n", (int)lpDestRect->left, (int)lpDestRect->top, (int)lpDestRect->right, (int)lpDestRect->bottom);
+            dprintf(" dest: w: %d h: %d bpp: %d\n", (int)this->width, (int)this->height, (int)this->bpp);
+        }
 
-		if (lpSrcRect)
-		{
-			dprintf(" src: l: %d t: %d r: %d b: %d\n", (int)lpSrcRect->left, (int)lpSrcRect->top, (int)lpSrcRect->right, (int)lpSrcRect->bottom);
-			dprintf(" src: w: %d h: %d bpp: %d\n", (int)srcImpl->width, (int)srcImpl->height, (int)srcImpl->bpp);
-		}
-	}
+        if (lpSrcRect)
+        {
+            dprintf(" src: l: %d t: %d r: %d b: %d\n", (int)lpSrcRect->left, (int)lpSrcRect->top, (int)lpSrcRect->right, (int)lpSrcRect->bottom);
+            dprintf(" src: w: %d h: %d bpp: %d\n", (int)srcImpl->width, (int)srcImpl->height, (int)srcImpl->bpp);
+        }
+    }
     if (lpDDBltFx)
     {
         dump_ddbltfx(lpDDBltFx);
     }
 
-	dprintf(
-		"<-- IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%08X, lpDDBltFx=%p) -> %08X\n", 
-		this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
+    dprintf(
+        "<-- IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%08X, lpDDBltFx=%p) -> %08X\n", 
+        this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
 
     LEAVE;
     return ret;
@@ -620,7 +620,7 @@ HRESULT __stdcall _DeleteAttachedSurface(IDirectDrawSurfaceImpl *this, DWORD dwF
 static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFACEDESC lpDDSurfaceDesc)
 {
     ENTER;
-	dprintf("--> IDirectDrawSurface::GetSurfaceDesc(this=%p, lpDDSurfaceDesc=%p)\n", this, lpDDSurfaceDesc);
+    dprintf("--> IDirectDrawSurface::GetSurfaceDesc(this=%p, lpDDSurfaceDesc=%p)\n", this, lpDDSurfaceDesc);
     HRESULT ret = DD_OK;
 
     if (PROXY)
@@ -644,7 +644,7 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
         lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
     }
 
-	dump_ddsurfacedesc(lpDDSurfaceDesc);
+    dump_ddsurfacedesc(lpDDSurfaceDesc);
     dprintf("<-- IDirectDrawSurface::GetSurfaceDesc(this=%p, lpDDSurfaceDesc=%p) -> %08X\n", this, lpDDSurfaceDesc, (int)ret);
     LEAVE;
     return ret;
@@ -712,7 +712,7 @@ HRESULT __stdcall _GetColorKey(IDirectDrawSurfaceImpl *this, DWORD a, LPDDCOLORK
 
 HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
 {
-	dprintf("--> IDirectDrawSurface::GetDC(this=%p, lphDC=%p)\n", this, lphDC);
+    dprintf("--> IDirectDrawSurface::GetDC(this=%p, lphDC=%p)\n", this, lphDC);
 
     HRESULT ret = DD_OK;
 
@@ -765,7 +765,7 @@ HRESULT __stdcall _GetPixelFormat(IDirectDrawSurfaceImpl *this, LPDDPIXELFORMAT 
     lpDDPixelFormat->dwGBitMask = 0x03E0;
     lpDDPixelFormat->dwBBitMask = 0x001F;
 
-	dprintf("<-- IDirectDrawSurface::GetPixelFormat(this=%p, lpDDPixelFormat=%p)\n", this, lpDDPixelFormat);
+    dprintf("<-- IDirectDrawSurface::GetPixelFormat(this=%p, lpDDPixelFormat=%p)\n", this, lpDDPixelFormat);
     return DD_OK;
 }
 
@@ -797,9 +797,9 @@ static HRESULT __stdcall _IsLost(IDirectDrawSurfaceImpl *this)
 static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, LPDDSURFACEDESC lpDDSurfaceDesc, DWORD dwFlags, HANDLE hEvent)
 {
     ENTER;
-	dprintf(
-		"--> IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p)\n",
-		this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent);
+    dprintf(
+        "--> IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p)\n",
+        this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent);
 
     HRESULT ret = DD_OK;
 
@@ -827,10 +827,10 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         EnterCriticalSection(&this->lock);
     }
 
-	dump_ddsurfacedesc(lpDDSurfaceDesc);
+    dump_ddsurfacedesc(lpDDSurfaceDesc);
     dprintf(
-		"<-- IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n", 
-		this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent, (int)ret);
+        "<-- IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n", 
+        this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent, (int)ret);
 
     LEAVE;
     return ret;
@@ -839,7 +839,7 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
 HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
 {
     ENTER;
-	dprintf("--> IDirectDrawSurface::ReleaseDC(this=%p, hDC=%08X)\n", this, (int)hDC);
+    dprintf("--> IDirectDrawSurface::ReleaseDC(this=%p, hDC=%08X)\n", this, (int)hDC);
 
     HRESULT ret = DD_OK;
 
@@ -887,7 +887,7 @@ HRESULT __stdcall _Restore(IDirectDrawSurfaceImpl *this)
 static HRESULT __stdcall _SetClipper(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWCLIPPER lpDDClipper)
 {
     ENTER;
-	dprintf("--> IDirectDrawSurface::SetClipper(this=%p, lpDDClipper=%p)\n", this, lpDDClipper);
+    dprintf("--> IDirectDrawSurface::SetClipper(this=%p, lpDDClipper=%p)\n", this, lpDDClipper);
 
     HRESULT ret = DD_OK;
     IDirectDrawClipperImpl *impl = (IDirectDrawClipperImpl *)lpDDClipper;
@@ -923,7 +923,7 @@ HRESULT __stdcall _SetPalette(IDirectDrawSurfaceImpl *this, LPDIRECTDRAWPALETTE 
 static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
 {
     ENTER;
-	dprintf("--> IDirectDrawSurface::Unlock(this=%p, lpRect=%p)\n", this, lpRect);
+    dprintf("--> IDirectDrawSurface::Unlock(this=%p, lpRect=%p)\n", this, lpRect);
 
     HRESULT ret = DD_OK;
 

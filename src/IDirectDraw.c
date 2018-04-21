@@ -24,7 +24,7 @@ static IDirectDrawImpl *ddraw;
 
 IDirectDrawImpl *IDirectDrawImpl_construct()
 {
-	dprintf("--> IDirectDraw::construct()\n");
+    dprintf("--> IDirectDraw::construct()\n");
 
     IDirectDrawImpl *this = calloc(1, sizeof(IDirectDrawImpl));
     this->lpVtbl = &Vtbl;
@@ -34,14 +34,14 @@ IDirectDrawImpl *IDirectDrawImpl_construct()
     timeBeginPeriod(1);
     ddraw = this;
 
-	dprintf("<-- IDirectDraw::construct() -> %p\n", this);
+    dprintf("<-- IDirectDraw::construct() -> %p\n", this);
     return this;
 }
 
 static HRESULT __stdcall _QueryInterface(IDirectDrawImpl *this, REFIID riid, void **obj)
 {
     ENTER;
-	dprintf("--> IDirectDraw::QueryInterface(this=%p, riid=%p, obj=%p)\n", this, riid, obj);
+    dprintf("--> IDirectDraw::QueryInterface(this=%p, riid=%p, obj=%p)\n", this, riid, obj);
     HRESULT ret = IDirectDraw_QueryInterface(this->real, riid, obj);
     dprintf("<-- IDirectDraw::QueryInterface(this=%p, riid=%p, obj=%p) -> %08X\n", this, riid, obj, (int)ret);
     LEAVE;
@@ -51,7 +51,7 @@ static HRESULT __stdcall _QueryInterface(IDirectDrawImpl *this, REFIID riid, voi
 static ULONG __stdcall _AddRef(IDirectDrawImpl *this)
 {
     ENTER;
-	dprintf("--> IDirectDraw::AddRef(this=%p)\n", this);
+    dprintf("--> IDirectDraw::AddRef(this=%p)\n", this);
     ULONG ret = IDirectDraw_AddRef(this->real);
     dprintf("<-- IDirectDraw::AddRef(this=%p) -> %08X\n", this, (int)ret);
     LEAVE;
@@ -61,7 +61,7 @@ static ULONG __stdcall _AddRef(IDirectDrawImpl *this)
 static ULONG __stdcall _Release(IDirectDrawImpl *this)
 {
     ENTER;
-	dprintf("--> IDirectDraw::Release(this=%p)\n", this);
+    dprintf("--> IDirectDraw::Release(this=%p)\n", this);
     ULONG ret = --this->ref;
 
     if (PROXY)
@@ -84,7 +84,7 @@ static ULONG __stdcall _Release(IDirectDrawImpl *this)
 
 static HRESULT __stdcall _Compact(IDirectDrawImpl *this)
 {
-	dprintf("--> IDirectDraw::Compact(this=%p)\n", this);
+    dprintf("--> IDirectDraw::Compact(this=%p)\n", this);
     HRESULT ret = IDirectDraw_Compact(this->real);
     dprintf("<-- IDirectDraw::Compact(this=%p) -> %08X\n", this, (int)ret);
     return ret;
@@ -92,22 +92,22 @@ static HRESULT __stdcall _Compact(IDirectDrawImpl *this)
 
 static HRESULT __stdcall _CreatePalette(IDirectDrawImpl *this, DWORD dwFlags, LPPALETTEENTRY lpDDColorArray, LPDIRECTDRAWPALETTE FAR * lplpDDPalette, IUnknown FAR * pUnkOuter)
 {
-	dprintf(
-		"--> IDirectDraw::CreatePalette(this=%p, dwFlags=%d, lpDDColorArray=%p, lplpDDPalette=%p, pUnkOuter=%p)\n",
-		this, (int)dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter);
+    dprintf(
+        "--> IDirectDraw::CreatePalette(this=%p, dwFlags=%d, lpDDColorArray=%p, lplpDDPalette=%p, pUnkOuter=%p)\n",
+        this, (int)dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter);
 
     HRESULT ret = IDirectDraw_CreatePalette(this->real, dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter);
 
     dprintf(
-		"<-- IDirectDraw::CreatePalette(this=%p, dwFlags=%d, lpDDColorArray=%p, lplpDDPalette=%p, pUnkOuter=%p) -> %08X\n", 
-		this, (int)dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter, (int)ret);
+        "<-- IDirectDraw::CreatePalette(this=%p, dwFlags=%d, lpDDColorArray=%p, lplpDDPalette=%p, pUnkOuter=%p) -> %08X\n", 
+        this, (int)dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter, (int)ret);
     return ret;
 }
 
 static HRESULT __stdcall _CreateClipper(IDirectDrawImpl *this, DWORD dwFlags, LPDIRECTDRAWCLIPPER FAR *lplpDDClipper, IUnknown FAR *pUnkOuter)
 {
     ENTER;
-	dprintf("--> IDirectDraw::CreateClipper(this=%p, dwFlags=%d, lplpDDClipper=%p, unkOuter=%p)\n", this, (int)dwFlags, lplpDDClipper, pUnkOuter);
+    dprintf("--> IDirectDraw::CreateClipper(this=%p, dwFlags=%d, lplpDDClipper=%p, unkOuter=%p)\n", this, (int)dwFlags, lplpDDClipper, pUnkOuter);
 
     HRESULT ret = DD_OK;
     IDirectDrawClipperImpl *impl = IDirectDrawClipperImpl_construct();
@@ -126,7 +126,7 @@ static HRESULT __stdcall _CreateClipper(IDirectDrawImpl *this, DWORD dwFlags, LP
 static HRESULT __stdcall _CreateSurface(IDirectDrawImpl *this, LPDDSURFACEDESC lpDDSurfaceDesc, LPDIRECTDRAWSURFACE FAR *lplpDDSurface, IUnknown FAR * pUnkOuter)
 {
     ENTER;
-	dprintf("--> IDirectDraw::CreateSurface(this=%p, lpDDSurfaceDesc=%p, lplpDDSurface=%p, pUnkOuter=%p)\n", this, lpDDSurfaceDesc, lplpDDSurface, pUnkOuter);
+    dprintf("--> IDirectDraw::CreateSurface(this=%p, lpDDSurfaceDesc=%p, lplpDDSurface=%p, pUnkOuter=%p)\n", this, lpDDSurfaceDesc, lplpDDSurface, pUnkOuter);
 
     HRESULT ret = DD_OK;
     IDirectDrawSurfaceImpl *impl = IDirectDrawSurfaceImpl_construct(this, lpDDSurfaceDesc);
@@ -143,14 +143,14 @@ static HRESULT __stdcall _CreateSurface(IDirectDrawImpl *this, LPDDSURFACEDESC l
         dump_ddsurfacedesc(lpDDSurfaceDesc);
     }
 
-	dprintf("<-- IDirectDraw::CreateSurface(this=%p, lpDDSurfaceDesc=%p, lplpDDSurface=%p, pUnkOuter=%p) -> %08X\n", this, lpDDSurfaceDesc, lplpDDSurface, pUnkOuter, (int)ret);
+    dprintf("<-- IDirectDraw::CreateSurface(this=%p, lpDDSurfaceDesc=%p, lplpDDSurface=%p, pUnkOuter=%p) -> %08X\n", this, lpDDSurfaceDesc, lplpDDSurface, pUnkOuter, (int)ret);
     LEAVE;
     return ret;
 }
 
 static HRESULT __stdcall _DuplicateSurface(IDirectDrawImpl *this, LPDIRECTDRAWSURFACE src, LPDIRECTDRAWSURFACE *dest)
 {
-	dprintf("--> IDirectDraw::DuplicateSurface(this=%p, src=%p, dest=%p)\n", this, src, dest);
+    dprintf("--> IDirectDraw::DuplicateSurface(this=%p, src=%p, dest=%p)\n", this, src, dest);
     HRESULT ret = DDERR_UNSUPPORTED;
 
     if (PROXY)
@@ -164,9 +164,9 @@ static HRESULT __stdcall _DuplicateSurface(IDirectDrawImpl *this, LPDIRECTDRAWSU
 
 static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags, LPDDSURFACEDESC lpDDSurfaceDesc, LPVOID lpContext, LPDDENUMMODESCALLBACK lpEnumModesCallback)
 {
-	dprintf(
-		"--> IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p)\n",
-		this, (int)dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback);
+    dprintf(
+        "--> IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p)\n",
+        this, (int)dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback);
 
     HRESULT ret = DD_OK;
 
@@ -203,30 +203,30 @@ static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags,
     }
 
     dprintf(
-		"<-- IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p) -> %08X\n", 
-		this, (int)dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback, (int)ret);
+        "<-- IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p) -> %08X\n", 
+        this, (int)dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback, (int)ret);
 
     return ret;
 }
 
 static HRESULT __stdcall _EnumSurfaces(IDirectDrawImpl *this, DWORD dwFlags, LPDDSURFACEDESC lpDDSD, LPVOID lpContext, LPDDENUMSURFACESCALLBACK lpEnumSurfacesCallback)
 {
-	dprintf(
-		"--> IDirectDraw::EnumSurfaces(this=%p, dwFlags=%08X, lpDDSD=%p, lpContext=%p, lpEnumSurfacesCallback=%p)\n",
-		this, (int)dwFlags, lpDDSD, lpContext, lpEnumSurfacesCallback);
+    dprintf(
+        "--> IDirectDraw::EnumSurfaces(this=%p, dwFlags=%08X, lpDDSD=%p, lpContext=%p, lpEnumSurfacesCallback=%p)\n",
+        this, (int)dwFlags, lpDDSD, lpContext, lpEnumSurfacesCallback);
 
     HRESULT ret = IDirectDraw_EnumSurfaces(this->real, dwFlags, lpDDSD, lpContext, lpEnumSurfacesCallback);
 
     dprintf(
-		"<-- IDirectDraw::EnumSurfaces(this=%p, dwFlags=%08X, lpDDSD=%p, lpContext=%p, lpEnumSurfacesCallback=%p) -> %08X\n", 
-		this, (int)dwFlags, lpDDSD, lpContext, lpEnumSurfacesCallback, (int)ret);
+        "<-- IDirectDraw::EnumSurfaces(this=%p, dwFlags=%08X, lpDDSD=%p, lpContext=%p, lpEnumSurfacesCallback=%p) -> %08X\n", 
+        this, (int)dwFlags, lpDDSD, lpContext, lpEnumSurfacesCallback, (int)ret);
 
     return ret;
 }
 
 static HRESULT __stdcall _FlipToGDISurface(IDirectDrawImpl *this)
 {
-	dprintf("--> IDirectDraw::FlipToGDISurface(this=%p)\n", this);
+    dprintf("--> IDirectDraw::FlipToGDISurface(this=%p)\n", this);
     HRESULT ret = IDirectDraw_FlipToGDISurface(this->real);
     dprintf("<-- IDirectDraw::FlipToGDISurface(this=%p) -> %08X\n", this, (int)ret);
     return ret;
@@ -234,9 +234,9 @@ static HRESULT __stdcall _FlipToGDISurface(IDirectDrawImpl *this)
 
 static HRESULT __stdcall _GetCaps(IDirectDrawImpl *this, LPDDCAPS lpDDDriverCaps, LPDDCAPS lpDDEmulCaps)
 {
-	dprintf(
-		"--> IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p)\n", 
-		this, lpDDDriverCaps, lpDDEmulCaps);
+    dprintf(
+        "--> IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p)\n", 
+        this, lpDDDriverCaps, lpDDEmulCaps);
 
 
     HRESULT ret = DD_OK;
@@ -287,16 +287,16 @@ static HRESULT __stdcall _GetCaps(IDirectDrawImpl *this, LPDDCAPS lpDDDriverCaps
         dump_ddcaps(lpDDDriverCaps);
     }
 
-	dprintf(
-		"<-- IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p) -> %08X\n", 
-		this, lpDDDriverCaps, lpDDEmulCaps, (int)ret);
+    dprintf(
+        "<-- IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p) -> %08X\n", 
+        this, lpDDDriverCaps, lpDDEmulCaps, (int)ret);
 
     return ret;
 }
 
 static HRESULT __stdcall _GetDisplayMode(IDirectDrawImpl *this, LPDDSURFACEDESC lpDDSurfaceDesc)
 {
-	dprintf("--> IDirectDraw::GetDisplayMode(this=%p, lpDDSurfaceDesc=%p)\n", this, lpDDSurfaceDesc);
+    dprintf("--> IDirectDraw::GetDisplayMode(this=%p, lpDDSurfaceDesc=%p)\n", this, lpDDSurfaceDesc);
     HRESULT ret = IDirectDraw_GetDisplayMode(this->real, lpDDSurfaceDesc);
     dprintf("<-- IDirectDraw::GetDisplayMode(this=%p, lpDDSurfaceDesc=%p) -> %08X\n", this, lpDDSurfaceDesc, (int)ret);
     return ret;
@@ -304,7 +304,7 @@ static HRESULT __stdcall _GetDisplayMode(IDirectDrawImpl *this, LPDDSURFACEDESC 
 
 static HRESULT __stdcall _GetFourCCCodes(IDirectDrawImpl *this, LPDWORD lpNumCodes, LPDWORD lpCodes)
 {
-	dprintf("--> IDirectDraw::GetFourCCCodes(this=%p, lpNumCodes=%p, lpCodes=%p)\n", this, lpNumCodes, lpCodes);
+    dprintf("--> IDirectDraw::GetFourCCCodes(this=%p, lpNumCodes=%p, lpCodes=%p)\n", this, lpNumCodes, lpCodes);
     HRESULT ret = IDirectDraw_GetFourCCCodes(this->real, lpNumCodes, lpCodes);
     dprintf("<-- IDirectDraw::GetFourCCCodes(this=%p, lpNumCodes=%p, lpCodes=%p) -> %08X\n", this, lpNumCodes, lpCodes, (int)ret);
     return ret;
@@ -312,7 +312,7 @@ static HRESULT __stdcall _GetFourCCCodes(IDirectDrawImpl *this, LPDWORD lpNumCod
 
 static HRESULT __stdcall _GetGDISurface(IDirectDrawImpl *this, LPDIRECTDRAWSURFACE *lplpGDIDDSSurface)
 {
-	dprintf("--> IDirectDraw::GetGDISurface(this=%p, lplpGDIDDSSurface=%p)\n", this, lplpGDIDDSSurface);
+    dprintf("--> IDirectDraw::GetGDISurface(this=%p, lplpGDIDDSSurface=%p)\n", this, lplpGDIDDSSurface);
     HRESULT ret = IDirectDraw_GetGDISurface(this->real, lplpGDIDDSSurface);
     dprintf("<-- IDirectDraw::GetGDISurface(this=%p, lplpGDIDDSSurface=%p) -> %08X\n", this, lplpGDIDDSSurface, (int)ret);
     return ret;
@@ -320,7 +320,7 @@ static HRESULT __stdcall _GetGDISurface(IDirectDrawImpl *this, LPDIRECTDRAWSURFA
 
 static HRESULT __stdcall _GetMonitorFrequency(IDirectDrawImpl *this, LPDWORD lpdwFrequency)
 {
-	dprintf("--> IDirectDraw::GetMonitorFrequency(this=%p, lpdwFrequency=%p)\n", this, lpdwFrequency);
+    dprintf("--> IDirectDraw::GetMonitorFrequency(this=%p, lpdwFrequency=%p)\n", this, lpdwFrequency);
     HRESULT ret = IDirectDraw_GetMonitorFrequency(this->real, lpdwFrequency);
     dprintf("<-- IDirectDraw::GetMonitorFrequency(this=%p, lpdwFrequency=%p) -> %08X\n", this, lpdwFrequency, (int)ret);
     return ret;
@@ -328,7 +328,7 @@ static HRESULT __stdcall _GetMonitorFrequency(IDirectDrawImpl *this, LPDWORD lpd
 
 static HRESULT __stdcall _GetScanLine(IDirectDrawImpl *this, LPDWORD lpdwScanLine)
 {
-	dprintf("--> IDirectDraw::GetScanLine(this=%p, lpdwScanLine=%p)\n", this, lpdwScanLine);
+    dprintf("--> IDirectDraw::GetScanLine(this=%p, lpdwScanLine=%p)\n", this, lpdwScanLine);
     HRESULT ret = IDirectDraw_GetScanLine(this->real, lpdwScanLine);
     dprintf("<-- IDirectDraw::GetScanLine(this=%p, lpdwScanLine=%p) -> %08X\n", this, lpdwScanLine, (int)ret);
     return ret;
@@ -336,7 +336,7 @@ static HRESULT __stdcall _GetScanLine(IDirectDrawImpl *this, LPDWORD lpdwScanLin
 
 static HRESULT __stdcall _GetVerticalBlankStatus(IDirectDrawImpl *this, LPBOOL lpbIsInVB)
 {
-	dprintf("--> IDirectDraw::GetVerticalBlankStatus(this=%p, lpbIsInVB=%s)\n", this, (lpbIsInVB ? "TRUE" : "FALSE"));
+    dprintf("--> IDirectDraw::GetVerticalBlankStatus(this=%p, lpbIsInVB=%s)\n", this, (lpbIsInVB ? "TRUE" : "FALSE"));
     HRESULT ret = DDERR_UNSUPPORTED;
 
     if (PROXY)
@@ -350,7 +350,7 @@ static HRESULT __stdcall _GetVerticalBlankStatus(IDirectDrawImpl *this, LPBOOL l
 
 static HRESULT __stdcall _Initialize(IDirectDrawImpl *this, GUID *lpGUID)
 {
-	dprintf("--> IDirectDraw::Initialize(this=%p, lpGUID=%p)\n", this, lpGUID);
+    dprintf("--> IDirectDraw::Initialize(this=%p, lpGUID=%p)\n", this, lpGUID);
 
     HRESULT ret = DDERR_UNSUPPORTED;
 
@@ -365,7 +365,7 @@ static HRESULT __stdcall _Initialize(IDirectDrawImpl *this, GUID *lpGUID)
 
 static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
 {
-	dprintf("--> IDirectDraw::RestoreDisplayMode(this=%p)\n", this);
+    dprintf("--> IDirectDraw::RestoreDisplayMode(this=%p)\n", this);
     HRESULT ret = DD_OK;
 
     if (PROXY)
@@ -383,79 +383,79 @@ static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
 
 SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
 {
-	this->width = width;
-	this->height = height;
+    this->width = width;
+    this->height = height;
 
-	if (this->render.stretchFullscreen)
-	{
-		this->render.width = this->screenWidth;
-		this->render.height = this->screenHeight;
-	}
+    if (this->render.stretchFullscreen)
+    {
+        this->render.width = this->screenWidth;
+        this->render.height = this->screenHeight;
+    }
 
-	if (this->render.width < this->width)
-		this->render.width = this->width;
+    if (this->render.width < this->width)
+        this->render.width = this->width;
 
-	if (this->render.height < this->height)
-		this->render.height = this->height;
+    if (this->render.height < this->height)
+        this->render.height = this->height;
 
-	this->render.viewport.width = this->render.width;
-	this->render.viewport.height = this->render.height;
-	this->render.viewport.x = 0;
-	this->render.viewport.y = 0;
+    this->render.viewport.width = this->render.width;
+    this->render.viewport.height = this->render.height;
+    this->render.viewport.x = 0;
+    this->render.viewport.y = 0;
 
-	if (this->render.boxing)
-	{
-		this->render.viewport.width = this->width;
-		this->render.viewport.height = this->height;
-		
-		for (int i = 20; i-- > 1;)
-		{
-			if (this->width * i <= this->render.width && this->height * i <= this->render.height)
-			{
-				this->render.viewport.width *= i;
-				this->render.viewport.height *= i;
-				break;
-			}
-		}
+    if (this->render.boxing)
+    {
+        this->render.viewport.width = this->width;
+        this->render.viewport.height = this->height;
+        
+        for (int i = 20; i-- > 1;)
+        {
+            if (this->width * i <= this->render.width && this->height * i <= this->render.height)
+            {
+                this->render.viewport.width *= i;
+                this->render.viewport.height *= i;
+                break;
+            }
+        }
 
-		this->render.viewport.y = this->render.height / 2 - this->render.viewport.height / 2;
-		this->render.viewport.x = this->render.width / 2 - this->render.viewport.width / 2;
-	}
-	else if (this->render.maintas)
-	{
-		this->render.viewport.width = this->render.width;
-		this->render.viewport.height = ((float)this->height / this->width) * this->render.viewport.width;
+        this->render.viewport.y = this->render.height / 2 - this->render.viewport.height / 2;
+        this->render.viewport.x = this->render.width / 2 - this->render.viewport.width / 2;
+    }
+    else if (this->render.maintas)
+    {
+        this->render.viewport.width = this->render.width;
+        this->render.viewport.height = ((float)this->height / this->width) * this->render.viewport.width;
 
-		if (this->render.viewport.height > this->render.height)
-		{
-			this->render.viewport.width =
-				((float)this->render.viewport.width / this->render.viewport.height) * this->render.height;
+        if (this->render.viewport.height > this->render.height)
+        {
+            this->render.viewport.width =
+                ((float)this->render.viewport.width / this->render.viewport.height) * this->render.height;
 
-			this->render.viewport.height = this->render.height;
-		}
+            this->render.viewport.height = this->render.height;
+        }
 
-		this->render.viewport.y = this->render.height / 2 - this->render.viewport.height / 2;
-		this->render.viewport.x = this->render.width / 2 - this->render.viewport.width / 2;
-	}
+        this->render.viewport.y = this->render.height / 2 - this->render.viewport.height / 2;
+        this->render.viewport.x = this->render.width / 2 - this->render.viewport.width / 2;
+    }
 
-	this->render.scaleW = ((float)this->render.viewport.width / this->width);
-	this->render.scaleH = ((float)this->render.viewport.height / this->height);
+    this->render.scaleW = ((float)this->render.viewport.width / this->width);
+    this->render.scaleH = ((float)this->render.viewport.height / this->height);
 
-	this->render.stretched =
-		this->render.viewport.width != this->width ||
-		this->render.viewport.height != this->height ||
-		this->render.viewport.x != 0 ||
-		this->render.viewport.y != 0;
+    this->render.stretched =
+        this->render.viewport.width != this->width ||
+        this->render.viewport.height != this->height ||
+        this->render.viewport.x != 0 ||
+        this->render.viewport.y != 0;
 
-	SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
-	
-	this->render.invalidate = TRUE;
+    SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
+    
+    this->render.invalidate = TRUE;
 }
 
 static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWORD height, DWORD bpp)
 {
     ENTER;
-	dprintf("--> IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d)\n", this, (int)width, (int)height, (int)bpp);
+    dprintf("--> IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d)\n", this, (int)width, (int)height, (int)bpp);
     HRESULT ret = DD_OK;
 
     if (PROXY)
@@ -468,36 +468,36 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             return DDERR_INVALIDMODE;
 
 
-		// use these to enable stretching for testing
-		// works only for spawner games and only fullscreen right now
+        // use these to enable stretching for testing
+        // works only for spawner games and only fullscreen right now
 
-		//this->render.width = 1280;
-		//this->render.height = 800;
-		//this->render.stretchFullscreen = TRUE;
-		//this->render.boxing = TRUE;
-		//this->render.maintas = TRUE;
+        //this->render.width = 1280;
+        //this->render.height = 800;
+        //this->render.stretchFullscreen = TRUE;
+        //this->render.boxing = TRUE;
+        //this->render.maintas = TRUE;
 
-		SetWindowSize(this, width, height);
+        SetWindowSize(this, width, height);
 
         this->bpp = bpp;
 
-		if (!IsWindowsXp())
-		{
-			PIXELFORMATDESCRIPTOR pfd;
+        if (!IsWindowsXp())
+        {
+            PIXELFORMATDESCRIPTOR pfd;
 
-			memset(&pfd, 0, sizeof(pfd));
-			pfd.nSize = sizeof(pfd);
-			pfd.nVersion = 1;
-			pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-			pfd.iPixelType = PFD_TYPE_RGBA;
-			pfd.cColorBits = this->bpp;
-			pfd.iLayerType = PFD_MAIN_PLANE;
-			if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
-			{
-				dprintf("SetPixelFormat failed!\n");
-				ret = DDERR_UNSUPPORTED;
-			}
-		}
+            memset(&pfd, 0, sizeof(pfd));
+            pfd.nSize = sizeof(pfd);
+            pfd.nVersion = 1;
+            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+            pfd.iPixelType = PFD_TYPE_RGBA;
+            pfd.cColorBits = this->bpp;
+            pfd.iLayerType = PFD_MAIN_PLANE;
+            if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
+            {
+                dprintf("SetPixelFormat failed!\n");
+                ret = DDERR_UNSUPPORTED;
+            }
+        }
 
         this->mode.dmSize = sizeof(this->mode);
         this->mode.dmFields = DM_PELSWIDTH|DM_PELSHEIGHT;
@@ -506,22 +506,22 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 
         if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
-			// odd height or half screenWidth/Height trigger scaling on invalid resolutions (hidden feature)
-			if (this->height % 2 != 0 || (this->width * 2 == this->screenWidth && this->height * 2 == this->screenHeight))
-			{
-				this->mode.dmPelsWidth = this->render.width = this->screenWidth;
-				this->mode.dmPelsHeight = this->render.height = this->screenHeight;
+            // odd height or half screenWidth/Height trigger scaling on invalid resolutions (hidden feature)
+            if (this->height % 2 != 0 || (this->width * 2 == this->screenWidth && this->height * 2 == this->screenHeight))
+            {
+                this->mode.dmPelsWidth = this->render.width = this->screenWidth;
+                this->mode.dmPelsHeight = this->render.height = this->screenHeight;
 
-				if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
-					return DDERR_INVALIDMODE;
+                if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+                    return DDERR_INVALIDMODE;
 
-				SetWindowSize(this, width, height);
-			}
-			else
-			{
-				dprintf("    mode change failed!\n");
-				return DDERR_INVALIDMODE;
-			}
+                SetWindowSize(this, width, height);
+            }
+            else
+            {
+                dprintf("    mode change failed!\n");
+                return DDERR_INVALIDMODE;
+            }
         }
 
         POINT p = { 0, 0 };
@@ -529,7 +529,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         GetClientRect(this->dd->hWnd, &this->winRect);
         OffsetRect(&this->winRect, p.x, p.y);
 
-		mouse_lock(this->hWnd);
+        mouse_lock(this->hWnd);
     }
 
     dprintf("<-- IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d) -> %08X\n", this, (int)width, (int)height, (int)bpp, (int)ret);
@@ -552,11 +552,11 @@ void mouse_lock(HWND hWnd)
 
     SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
 
-	if (ddraw->render.stretched)
-	{
-		rc.right = ddraw->width;
-		rc.bottom = ddraw->height;
-	}
+    if (ddraw->render.stretched)
+    {
+        rc.right = ddraw->width;
+        rc.bottom = ddraw->height;
+    }
 
     ClipCursor(&rc);
     CaptureMouse = true;
@@ -574,11 +574,11 @@ void center_mouse(HWND hWnd)
     RECT size;
     GetClientRect(hWnd, &size);
 
-	if (ddraw->render.stretched)
-	{
-		size.right = ddraw->width;
-		size.bottom = ddraw->height;
-	}
+    if (ddraw->render.stretched)
+    {
+        size.right = ddraw->width;
+        size.bottom = ddraw->height;
+    }
 
     POINT pos = { 0, 0 };
     ClientToScreen(hWnd, &pos);
@@ -630,7 +630,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     TargetFPS = rememberFPS;
 
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
-				this->render.invalidate = TRUE;
+                this->render.invalidate = TRUE;
             }
             else if (wParam == WA_INACTIVE)
             {
@@ -754,7 +754,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, DWORD dwFlags)
 {
     ENTER;
-	dprintf("--> IDirectDraw::SetCooperativeLevel(this=%p, hWnd=%08X, dwFlags=%08X)\n", this, (int)hWnd, (int)dwFlags);
+    dprintf("--> IDirectDraw::SetCooperativeLevel(this=%p, hWnd=%08X, dwFlags=%08X)\n", this, (int)hWnd, (int)dwFlags);
     HRESULT ret = DD_OK;
 
     if (PROXY)
@@ -777,24 +777,24 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             this->wndProc = (LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
 
             SetWindowLong(this->hWnd, GWL_WNDPROC, (LONG)WndProc);
-			
-			if (!IsWindowsXp())
-			{
-				PIXELFORMATDESCRIPTOR pfd;
+            
+            if (!IsWindowsXp())
+            {
+                PIXELFORMATDESCRIPTOR pfd;
 
-				memset(&pfd, 0, sizeof(pfd));
-				pfd.nSize = sizeof(pfd);
-				pfd.nVersion = 1;
-				pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-				pfd.iPixelType = PFD_TYPE_RGBA;
-				pfd.cColorBits = this->bpp;
-				pfd.iLayerType = PFD_MAIN_PLANE;
-				if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
-				{
-					dprintf("SetPixelFormat failed!\n");
-					ret = DDERR_UNSUPPORTED;
-				}
-			}
+                memset(&pfd, 0, sizeof(pfd));
+                pfd.nSize = sizeof(pfd);
+                pfd.nVersion = 1;
+                pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+                pfd.iPixelType = PFD_TYPE_RGBA;
+                pfd.cColorBits = this->bpp;
+                pfd.iLayerType = PFD_MAIN_PLANE;
+                if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
+                {
+                    dprintf("SetPixelFormat failed!\n");
+                    ret = DDERR_UNSUPPORTED;
+                }
+            }
 
             if (this->screenWidth == 0)
             {
@@ -838,7 +838,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
         }
     }
 
-	dprintf("    screen = %dx%d\n", this->screenWidth, this->screenHeight);
+    dprintf("    screen = %dx%d\n", this->screenWidth, this->screenHeight);
     dprintf("<-- IDirectDraw::SetCooperativeLevel(this=%p, hWnd=%08X, dwFlags=%08X) -> %08X\n", this, (int)hWnd, (int)dwFlags, (int)ret);
     LEAVE;
     return ret;
@@ -846,7 +846,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
 
 static HRESULT __stdcall _WaitForVerticalBlank(IDirectDrawImpl *this, DWORD dwFlags, HANDLE hEvent)
 {
-	dprintf("--> IDirectDraw::WaitForVerticalBlank(this=%p, dwFlags=%08X, hEvent=%08X)\n", this, (int)dwFlags, (int)hEvent);
+    dprintf("--> IDirectDraw::WaitForVerticalBlank(this=%p, dwFlags=%08X, hEvent=%08X)\n", this, (int)dwFlags, (int)hEvent);
     HRESULT ret = IDirectDraw_WaitForVerticalBlank(this->real, dwFlags, hEvent);
     dprintf("<-- IDirectDraw::WaitForVerticalBlank(this=%p, dwFlags=%08X, hEvent=%08X) -> %08X\n", this, (int)dwFlags, (int)hEvent, (int)ret);
     return ret;

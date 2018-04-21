@@ -65,7 +65,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         setvbuf(stdout, NULL, _IOLBF, 1024);
     }
 #endif
-	dprintf("--> DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
+    dprintf("--> DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
 
     GetEnvironmentVariable("DDRAW_DRAW_FPS", buf, sizeof buf);
     if (buf[0]) DrawFPS = true;
@@ -103,7 +103,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
 
     *lplpDD = (IDirectDraw *)ddraw;
     dprintf(" lplpDD = %p\n", *lplpDD);
-	dprintf("<-- DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
+    dprintf("<-- DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
     return DD_OK;
 }
 
@@ -115,8 +115,8 @@ int dprintf(const char *fmt, ...)
 
     if (!TRACE) return 0;
 
-	SYSTEMTIME st;
-	GetLocalTime(&st);
+    SYSTEMTIME st;
+    GetLocalTime(&st);
 
     fprintf(stdout, "[%d] %02d:%02d:%02d.%03d ", GetCurrentThreadId(), st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
@@ -129,11 +129,11 @@ int dprintf(const char *fmt, ...)
 
 void DebugPrint(const char *format, ...)
 {
-	va_list args;
-	va_start(args, format);
-	char buffer[512];
-	_vsnprintf(buffer, sizeof(buffer), format, args);
-	OutputDebugStringA(buffer);
+    va_list args;
+    va_start(args, format);
+    char buffer[512];
+    _vsnprintf(buffer, sizeof(buffer), format, args);
+    OutputDebugStringA(buffer);
 }
 
 void dump_dwcaps(DWORD dwCaps)
@@ -299,7 +299,7 @@ void dump_ddpixelformat(LPDDPIXELFORMAT pfd)
 
 void dump_ddbltfx(LPDDBLTFX lpDDBltFx)
 {
-	if (!VERBOSE) return;
+    if (!VERBOSE) return;
 
     dprintf("       lpDDBltFx->dwSize           = %d\n", (int)lpDDBltFx->dwSize);
     dprintf("       lpDDBltFx->dwDDFX           = %08X\n", (int)lpDDBltFx->dwDDFX);
@@ -311,8 +311,8 @@ void dump_ddbltfx(LPDDBLTFX lpDDBltFx)
 
 BOOL IsWindowsXp()
 {
-	DWORD version = GetVersion();
-	DWORD major = (DWORD)(LOBYTE(LOWORD(version)));
-	DWORD minor = (DWORD)(HIBYTE(LOWORD(version)));
-	return ((major == 5) && (minor == 1));
+    DWORD version = GetVersion();
+    DWORD major = (DWORD)(LOBYTE(LOWORD(version)));
+    DWORD minor = (DWORD)(HIBYTE(LOWORD(version)));
+    return ((major == 5) && (minor == 1));
 }

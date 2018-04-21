@@ -76,20 +76,20 @@ struct IDirectDrawImpl
     int height;
     int bpp;
 
-	struct
-	{
-		BOOL boxing;
-		BOOL stretchFullscreen;
-		BOOL maintas;
-		BOOL invalidate;
-		BOOL stretched;
-		int width;
-		int height;
-		float scaleH;
-		float scaleW;
-		struct { int width; int height; int x; int y; } viewport;
+    struct
+    {
+        BOOL boxing;
+        BOOL stretchFullscreen;
+        BOOL maintas;
+        BOOL invalidate;
+        BOOL stretched;
+        int width;
+        int height;
+        float scaleH;
+        float scaleW;
+        struct { int width; int height; int x; int y; } viewport;
 
-	} render;
+    } render;
 };
 
 IDirectDrawImpl *IDirectDrawImpl_construct();
