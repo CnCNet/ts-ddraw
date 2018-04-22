@@ -390,7 +390,7 @@ static HRESULT __stdcall _RestoreDisplayMode(IDirectDrawImpl *this)
     return ret;
 }
 
-SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
+void SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
 {
     this->width = width;
     this->height = height;
@@ -497,7 +497,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
             {
                 dprintf("SetPixelFormat failed!\n");
-                ret = DDERR_UNSUPPORTED;
+                //ret = DDERR_UNSUPPORTED;
             }
         }
 
