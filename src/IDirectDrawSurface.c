@@ -23,6 +23,19 @@
 
 static IDirectDrawSurfaceImplVtbl Vtbl;
 
+BOOL ShouldStretch(IDirectDrawSurfaceImpl *this)
+{
+    if (!this->dd->render.stretched)
+        return FALSE;
+
+    CURSORINFO pci;
+    pci.cbSize = sizeof(CURSORINFO);
+    if (GetCursorInfo(&pci))
+        return pci.flags == 0;
+
+    return TRUE;
+}
+
 /* the TS hack itself */
 BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
 {
@@ -83,7 +96,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         {
             EnterCriticalSection(&this->lock);
 
-            if (this->dd->render.stretched)
+            if (ShouldStretch(this))
             {
                 if (this->dd->render.invalidate)
                 {
