@@ -467,6 +467,10 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         if (bpp != 16)
             return DDERR_INVALIDMODE;
 
+        // temporary workaround for YR, the game somehow does resize the window with scaling enabled
+        this->render.width = width;
+        this->render.height = height;
+
 
         // use these to enable stretching for testing
         // works only for spawner games and only fullscreen right now
