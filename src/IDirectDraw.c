@@ -19,6 +19,15 @@
 #include "IDirectDrawClipper.h"
 #include "IDirectDrawSurface.h"
 
+ // use these to enable stretching for testing
+ // works only fullscreen right now
+
+bool MaintainAspectRatio = false;
+bool Windowboxing = false;
+bool StretchToFullscreen = false;
+int StretchToWidth = 0;
+int StretchToHeight = 0;
+
 static IDirectDrawImplVtbl Vtbl;
 static IDirectDrawImpl *ddraw;
 
@@ -386,7 +395,7 @@ SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
     this->width = width;
     this->height = height;
 
-    if (this->render.stretchFullscreen)
+    if (StretchToFullscreen)
     {
         this->render.width = this->screenWidth;
         this->render.height = this->screenHeight;
@@ -403,7 +412,7 @@ SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
     this->render.viewport.x = 0;
     this->render.viewport.y = 0;
 
-    if (this->render.boxing)
+    if (Windowboxing)
     {
         this->render.viewport.width = this->width;
         this->render.viewport.height = this->height;
@@ -421,7 +430,7 @@ SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
         this->render.viewport.y = this->render.height / 2 - this->render.viewport.height / 2;
         this->render.viewport.x = this->render.width / 2 - this->render.viewport.width / 2;
     }
-    else if (this->render.maintas)
+    else if (MaintainAspectRatio)
     {
         this->render.viewport.width = this->render.width;
         this->render.viewport.height = ((float)this->height / this->width) * this->render.viewport.width;
@@ -467,19 +476,8 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         if (bpp != 16)
             return DDERR_INVALIDMODE;
 
-        // temporary workaround for YR, the game somehow does resize the window with scaling enabled
-        this->render.width = width;
-        this->render.height = height;
-
-
-        // use these to enable stretching for testing
-        // works only for spawner games and only fullscreen right now
-
-        //this->render.width = 1280;
-        //this->render.height = 800;
-        //this->render.stretchFullscreen = TRUE;
-        //this->render.boxing = TRUE;
-        //this->render.maintas = TRUE;
+        this->render.width = StretchToWidth;
+        this->render.height = StretchToHeight;
 
         SetWindowSize(this, width, height);
 

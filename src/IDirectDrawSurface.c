@@ -49,8 +49,6 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
     RECT pos;
     GetWindowRect(hWnd, &pos);
 
-    this->dd->render.invalidate = TRUE;
-
     BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
 
     ReleaseDC(hWnd, hDC);
@@ -113,8 +111,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 }
             }
             else
-                BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC, 
+            {
+                if (this->dd->render.stretched)
+                    this->dd->render.invalidate = TRUE;
+
+                BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC,
                     this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+            }
 
             if (showFPS > tick_start || DrawFPS)
                 DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);

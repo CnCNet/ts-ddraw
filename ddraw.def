@@ -6,3 +6,8 @@ EXPORTS
     GameHandlesClose            DATA
     CaptureMouse                DATA
     TargetFPS                   DATA
+    MaintainAspectRatio         DATA
+    Windowboxing                DATA
+    StretchToFullscreen         DATA
+    StretchToWidth              DATA
+    StretchToHeight             DATA

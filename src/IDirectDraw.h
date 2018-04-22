@@ -78,9 +78,6 @@ struct IDirectDrawImpl
 
     struct
     {
-        BOOL boxing;
-        BOOL stretchFullscreen;
-        BOOL maintas;
         BOOL invalidate;
         BOOL stretched;
         int width;
