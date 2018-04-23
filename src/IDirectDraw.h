@@ -22,6 +22,7 @@
 #define IDIRECTDRAW_H
 
 void mouse_lock(HWND hWnd);
+BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 
 typedef struct IDirectDrawImplVtbl IDirectDrawImplVtbl;
 typedef struct IDirectDrawImpl IDirectDrawImpl;

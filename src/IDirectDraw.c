@@ -395,6 +395,9 @@ void SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
     this->width = width;
     this->height = height;
 
+    this->render.width = StretchToWidth;
+    this->render.height = StretchToHeight;
+
     if (StretchToFullscreen)
     {
         this->render.width = this->screenWidth;
@@ -475,10 +478,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
     {
         if (bpp != 16)
             return DDERR_INVALIDMODE;
-
-        this->render.width = StretchToWidth;
-        this->render.height = StretchToHeight;
-
+        
         SetWindowSize(this, width, height);
 
         this->bpp = bpp;
@@ -511,8 +511,8 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             // odd height or half screenWidth/Height trigger scaling on invalid resolutions (hidden feature)
             if (this->height % 2 != 0 || (this->width * 2 == this->screenWidth && this->height * 2 == this->screenHeight))
             {
-                this->mode.dmPelsWidth = this->render.width = this->screenWidth;
-                this->mode.dmPelsHeight = this->render.height = this->screenHeight;
+                this->mode.dmPelsWidth = StretchToWidth = this->screenWidth;
+                this->mode.dmPelsHeight = StretchToHeight = this->screenHeight;
 
                 if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
                     return DDERR_INVALIDMODE;
@@ -539,6 +539,17 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
     return ret;
 }
 
+BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags)
+{
+    if (!(uFlags & SWP_NOSIZE) && ddraw && hWnd == ddraw->hWnd)
+    {
+        SetWindowSize(ddraw, cx, cy);
+        return TRUE;
+    }
+        
+    return SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+}
+
 bool CaptureMouse = false;
 bool MouseIsLocked = false;
 void mouse_lock(HWND hWnd)
@@ -546,6 +557,13 @@ void mouse_lock(HWND hWnd)
     RECT rc;
 
     GetClientRect(hWnd, &rc);
+
+    if (ddraw->render.stretched)
+    {
+        rc.right = ddraw->width;
+        rc.bottom = ddraw->height;
+    }
+
     // Convert the client area to screen coordinates.
     POINT pt = { rc.left, rc.top };
     POINT pt2 = { rc.right, rc.bottom };
@@ -553,12 +571,6 @@ void mouse_lock(HWND hWnd)
     ClientToScreen(hWnd, &pt2);
 
     SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
-
-    if (ddraw->render.stretched)
-    {
-        rc.right = ddraw->width;
-        rc.bottom = ddraw->height;
-    }
 
     ClipCursor(&rc);
     CaptureMouse = true;

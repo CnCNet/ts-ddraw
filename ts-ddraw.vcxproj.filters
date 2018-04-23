@@ -27,6 +27,9 @@
     <ClCompile Include="src\IDirectDrawSurface.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\hook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\scale_pattern.h">

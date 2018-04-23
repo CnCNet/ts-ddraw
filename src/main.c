@@ -18,6 +18,8 @@
 #include "main.h"
 #include "IDirectDraw.h"
 
+void hook_init();
+
 #ifdef _DEBUG
 int PROXY = 0;
 int VERBOSE = 1;
@@ -83,6 +85,8 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
 
     // unfortunately necessary to avoid random access violations
     SetProcessAffinityMask(GetCurrentProcess(), 1);
+
+    hook_init();
 
     IDirectDrawImpl *ddraw = IDirectDrawImpl_construct();
 

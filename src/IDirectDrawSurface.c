@@ -107,7 +107,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     StretchBlt(this->dd->hDC,
                         this->dd->render.viewport.x, this->dd->render.viewport.y,
                         this->dd->render.viewport.width, this->dd->render.viewport.height,
-                        this->hDC, 0, 0, this->dd->width, this->dd->height, SRCCOPY);
+                        this->hDC, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, SRCCOPY);
                 }
             }
             else
