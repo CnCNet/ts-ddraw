@@ -8,15 +8,21 @@ COPY ?= copy
 CFLAGS=--std=c99 -Wall -Wl,--enable-stdcall-fixup -O6 -g
 LIBS=-lgdi32 -lwinmm
 
+FILES = src/main.c \
+        src/IDirectDraw.c \
+        src/IDirectDrawClipper.c \
+        src/IDirectDrawSurface.c \
+        src/hook.c
+
 all: debug
 
 debug:
 	$(WINDRES) -J rc ddraw.rc ddraw.rc.o
-	$(CC) $(CFLAGS) -D_DEBUG -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.rc.o ddraw.def $(LIBS)
+	$(CC) $(CFLAGS) -D_DEBUG -shared -o ddraw.dll $(FILES) ddraw.rc.o ddraw.def $(LIBS)
 
 release:
 	$(WINDRES) -J rc ddraw.rc ddraw.rc.o
-	$(CC) $(CFLAGS) -nostdlib -shared -o ddraw.dll src/main.c src/IDirectDraw.c src/IDirectDrawClipper.c src/IDirectDrawSurface.c ddraw.rc.o ddraw.def $(LIBS) -lkernel32 -luser32 -lmsvcrt
+	$(CC) $(CFLAGS) -nostdlib -shared -o ddraw.dll $(FILES) ddraw.rc.o ddraw.def $(LIBS) -lkernel32 -luser32 -lmsvcrt
 	$(COPY) ddraw.dll ddraw.debug.dll
 	$(STRIP) -s ddraw.dll
 
