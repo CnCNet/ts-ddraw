@@ -12,7 +12,8 @@ FILES = src/main.c \
         src/IDirectDraw.c \
         src/IDirectDrawClipper.c \
         src/IDirectDrawSurface.c \
-        src/hook.c
+        src/hook.c \
+        src/Settings.c
 
 all: debug
 

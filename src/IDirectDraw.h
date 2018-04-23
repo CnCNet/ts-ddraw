@@ -21,6 +21,12 @@
 #ifndef IDIRECTDRAW_H
 #define IDIRECTDRAW_H
 
+extern bool MaintainAspectRatio;
+extern bool Windowboxing;
+extern bool StretchToFullscreen;
+extern int StretchToWidth;
+extern int StretchToHeight;
+
 void mouse_lock(HWND hWnd);
 BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 

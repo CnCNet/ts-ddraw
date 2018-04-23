@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include "main.h"
 #include "IDirectDraw.h"
+#include "Settings.h"
 
 void hook_init();
 
@@ -86,6 +87,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     // unfortunately necessary to avoid random access violations
     SetProcessAffinityMask(GetCurrentProcess(), 1);
 
+    SettingsLoad();
     hook_init();
 
     IDirectDrawImpl *ddraw = IDirectDrawImpl_construct();
