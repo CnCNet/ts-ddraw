@@ -52,7 +52,7 @@ void DebugPrint(const char *format, ...);
 BOOL IsWindowsXp();
 
 bool GameHandlesClose;
-bool DrawFPS;
+int DrawFPS;
 DWORD TargetFPS;
 DWORD TargetFrameLen;
 

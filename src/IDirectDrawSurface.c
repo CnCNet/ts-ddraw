@@ -119,7 +119,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
             }
 
-            if (showFPS > tick_start || DrawFPS)
+            if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
                 DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);
 
             EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);

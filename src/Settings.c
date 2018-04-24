@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "IDirectDraw.h"
+#include "main.h"
 
 static bool GetBool(LPCTSTR key, bool defaultValue);
 #define GetInt(a,b) GetPrivateProfileInt(SettingsSection,a,b,SettingsPath)
@@ -17,6 +18,7 @@ void SettingsLoad()
     StretchToFullscreen = GetBool("StretchToFullscreen", StretchToFullscreen);
     StretchToWidth = GetInt("StretchToWidth", StretchToWidth);
     StretchToHeight = GetInt("StretchToHeight", StretchToHeight);
+    DrawFPS = GetInt("DrawFPS", DrawFPS);
 }
 
 static bool GetBool(LPCTSTR key, bool defaultValue)

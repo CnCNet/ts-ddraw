@@ -37,9 +37,9 @@ bool TSDDRAW = true;
 bool GameHandlesClose = false;
 
 #ifdef _DEBUG
-bool DrawFPS = true;
+int DrawFPS = 1;
 #else
-bool DrawFPS = false;
+int DrawFPS = 0;
 #endif
 
 DWORD TargetFPS = 62;
@@ -71,7 +71,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     dprintf("--> DirectDrawCreate(lpGUID=%p, lplpDD=%p, pUnkOuter=%p)\n", lpGUID, lplpDD, pUnkOuter);
 
     GetEnvironmentVariable("DDRAW_DRAW_FPS", buf, sizeof buf);
-    if (buf[0]) DrawFPS = true;
+    if (buf[0]) DrawFPS = 1;
     buf[0] = '\0';
     GetEnvironmentVariable("DDRAW_TARGET_FPS", buf, sizeof buf);
     if (buf[0])
