@@ -84,9 +84,6 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         }
     }
 
-    // unfortunately necessary to avoid random access violations
-    SetProcessAffinityMask(GetCurrentProcess(), 1);
-
     SettingsLoad();
     hook_init();
 
