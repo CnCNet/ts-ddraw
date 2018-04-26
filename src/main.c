@@ -35,6 +35,7 @@ BOOL WINAPI DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes
 
 bool TSDDRAW = true;
 bool GameHandlesClose = false;
+bool SingleProcAffinity = true;
 
 #ifdef _DEBUG
 int DrawFPS = 1;

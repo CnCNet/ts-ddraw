@@ -19,8 +19,18 @@ void SettingsLoad()
     StretchToWidth = GetInt("StretchToWidth", StretchToWidth);
     StretchToHeight = GetInt("StretchToHeight", StretchToHeight);
     DrawFPS = GetInt("DrawFPS", DrawFPS);
-    if (GetBool("SingleProcAffinity", true))
+    if (( SingleProcAffinity = GetBool("SingleProcAffinity", true) ))
+    {
         SetProcessAffinityMask(GetCurrentProcess(), 1);
+    }
+    else
+    {
+        DWORD systemAffinity;
+        DWORD procAffinity;
+        HANDLE proc = GetCurrentProcess();
+        if (GetProcessAffinityMask(proc, &procAffinity, &systemAffinity))
+            SetProcessAffinityMask(proc, systemAffinity);
+    }
 }
 
 static bool GetBool(LPCTSTR key, bool defaultValue)

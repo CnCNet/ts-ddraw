@@ -55,6 +55,7 @@ bool GameHandlesClose;
 int DrawFPS;
 DWORD TargetFPS;
 DWORD TargetFrameLen;
+bool SingleProcAffinity;
 
 #define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)
 
