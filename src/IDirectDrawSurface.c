@@ -75,7 +75,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     int rIndex = 0;
 
     RECT textRect = (RECT){0,0,0,0};
-    char fpsString[256] = {0};
+    char fpsString[256] = "FPS: NA\nTGT: NA\nDropped: NA";
     DWORD avg_fps = 0;
 
 #ifdef _DEBUG
@@ -145,7 +145,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         tick_len = tick_end - tick_start;
 
-        if (dropFrames == -1)
+        if (dropFrames == -1 && DrawFPS)
         {
             recent_frames[rIndex++] = tick_len;
 
@@ -173,9 +173,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         if (tick_len < TargetFrameLen)
         {
-            DWORD sleepTime = timeGetTime() - tick_start;
-            if (sleepTime < TargetFrameLen)
-                Sleep(TargetFrameLen - (timeGetTime() - tick_start));
+            Sleep(TargetFrameLen - tick_len);
         }
         else if (tick_len > TargetFrameLen)
         {
@@ -608,7 +606,7 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     }
 
     dprintf(
-        "<-- IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%08X, lpDDBltFx=%p) -> %08X\n", 
+        "<-- IDirectDrawSurface::Blt(this=%p, lpDestRect=%p, lpDDSrcSurface=%p, lpSrcRect=%p, dwFlags=%08X, lpDDBltFx=%p) -> %08X\n",
         this, lpDestRect, lpDDSrcSurface, lpSrcRect, (int)dwFlags, lpDDBltFx, (int)ret);
 
     LEAVE;
@@ -845,7 +843,7 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
 
     dump_ddsurfacedesc(lpDDSurfaceDesc);
     dprintf(
-        "<-- IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n", 
+        "<-- IDirectDrawSurface::Lock(this=%p, lpDestRect=%p, lpDDSurfaceDesc=%p, dwFlags=%08X, hEvent=%p) -> %08X\n",
         this, lpDestRect, lpDDSurfaceDesc, (int)dwFlags, hEvent, (int)ret);
 
     LEAVE;

@@ -85,7 +85,6 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         }
     }
 
-    SetProcessPriorityBoost(GetCurrentProcess(), TRUE);
     SettingsLoad();
     hook_init();
 
