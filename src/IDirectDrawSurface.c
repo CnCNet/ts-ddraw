@@ -41,7 +41,7 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
 {
     IDirectDrawSurfaceImpl *this = (IDirectDrawSurfaceImpl *)lParam;
 
-    HDC hDC = GetWindowDC(hWnd);
+    HDC hDC = GetDC(hWnd);
 
     RECT size;
     GetClientRect(hWnd, &size);
