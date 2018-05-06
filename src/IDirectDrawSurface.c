@@ -417,6 +417,8 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
             if (dst_w == src_w && dst_h == src_h)
             {
+                //BitBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, SRCCOPY);
+                
                 // The simplest possiblity: no scaling needed
                 uint16_t *dest_base = this->surface + dst.left + (this->width * dst.top);
                 uint16_t *src_base = srcImpl->surface + src.left + (srcImpl->width * src.top);
@@ -431,6 +433,8 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
             }
             else
             {
+                //StretchBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, src_w, src_h, SRCCOPY);
+
                 /* Linear scaling using integer math
                  * Since the scaling pattern for x will aways be the same, the pattern itself gets pre-calculated
                  * and stored in an array.
