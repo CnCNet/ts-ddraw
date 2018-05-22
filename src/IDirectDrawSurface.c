@@ -280,6 +280,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             }
             totalDroppedFrames += dropFrames;
         }
+        if (Renderer == RENDERER_OPENGL && InterlockedCompareExchange(&this->dd->focusGained, false, true))
+        {
+            wglMakeCurrent(this->dd->hDC, hRC);
+        }
     }
 
     if (Renderer == RENDERER_OPENGL)

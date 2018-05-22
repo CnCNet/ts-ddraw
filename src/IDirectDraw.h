@@ -94,6 +94,7 @@ struct IDirectDrawImpl
         struct { int width; int height; int x; int y; } viewport;
 
     } render;
+    LONG focusGained;
 };
 
 IDirectDrawImpl *IDirectDrawImpl_construct();

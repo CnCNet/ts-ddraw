@@ -649,6 +649,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
                 this->render.invalidate = TRUE;
+                InterlockedExchange(&this->dd->focusGained, true);
             }
             else if (wParam == WA_INACTIVE)
             {
