@@ -2,7 +2,7 @@
 #define vxstr(a,b,c,d) str(a##.##b##.##c##.##d)
 #define str(s) #s
 
-#define VERSION 1,1,3,3
+#define VERSION 1,1,3,4
 
 1 VERSIONINFO
 FILEVERSION VERSION
@@ -20,7 +20,7 @@ PRODUCTVERSION VERSION
             VALUE "LegalTrademarks", ""
             VALUE "OriginalFileName", "ddraw.dll"
             VALUE "ProductName", "DirectDraw replacement for Tiberian Sun and Red Alert 2"
-            VALUE "ProductVersion", "TS-DDraw GDI"
+            VALUE "ProductVersion", "TS-DDraw OpenGL/GDI"
             VALUE "Comments", "https://cncnet.org"
         }
     }

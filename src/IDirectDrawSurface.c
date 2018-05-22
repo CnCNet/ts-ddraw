@@ -206,7 +206,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                 glEnd();
 
-                //glFinish();
+                glFinish();
                 SwapBuffers(this->dd->hDC);
 
                 break;
