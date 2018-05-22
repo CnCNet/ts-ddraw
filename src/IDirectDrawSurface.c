@@ -17,9 +17,12 @@
 #include "main.h"
 #include "IDirectDrawClipper.h"
 #include "IDirectDrawSurface.h"
-#include "scale_pattern.h"
 #include <stdint.h>
 #include <stdio.h>
+
+#include "opengl.h"
+#include <GL/gl.h>
+#include <GL/glu.h>
 
 static IDirectDrawSurfaceImplVtbl Vtbl;
 
@@ -83,6 +86,44 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     int frames = 0;
 #endif
 
+    HGLRC hRC = NULL;
+    GLuint textureID;
+    GLenum gle;
+    bool failToGDI = false;
+
+    if (Renderer == RENDERER_OPENGL)
+    {
+        hRC = wglCreateContext(this->dd->hDC);
+
+        wglMakeCurrent(this->dd->hDC, hRC);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+
+        OpenGL_Init();
+
+        wglSwapIntervalEXT(SwapInterval);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+
+        glGenTextures(1, &textureID);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+
+        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+
+        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+
+        glEnable(GL_TEXTURE_2D);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+    }
+
+    if (failToGDI && AutoRenderer)
+    {
+        Renderer = RENDERER_GDI;
+    }
+
     while (this->thread)
     {
         tick_start = timeGetTime();
@@ -92,31 +133,69 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             dropFrames--;
         else
         {
-            EnterCriticalSection(&this->lock);
 
-            if (ShouldStretch(this))
+            switch(Renderer)
             {
-                if (this->dd->render.invalidate)
+            case RENDERER_GDI:
+                EnterCriticalSection(&this->lock);
+                if (ShouldStretch(this))
                 {
-                    this->dd->render.invalidate = FALSE;
-                    RECT rc = { 0, 0, this->dd->render.width, this->dd->render.height };
-                    FillRect(this->dd->hDC, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
+                    if (this->dd->render.invalidate)
+                    {
+                        this->dd->render.invalidate = FALSE;
+                        RECT rc = { 0, 0, this->dd->render.width, this->dd->render.height };
+                        FillRect(this->dd->hDC, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
+                    }
+                    else
+                    {
+                        StretchBlt(this->dd->hDC,
+                                   this->dd->render.viewport.x, this->dd->render.viewport.y,
+                                   this->dd->render.viewport.width, this->dd->render.viewport.height,
+                                   this->hDC, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, SRCCOPY);
+                    }
                 }
                 else
                 {
-                    StretchBlt(this->dd->hDC,
-                        this->dd->render.viewport.x, this->dd->render.viewport.y,
-                        this->dd->render.viewport.width, this->dd->render.viewport.height,
-                        this->hDC, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, SRCCOPY);
-                }
-            }
-            else
-            {
-                if (this->dd->render.stretched)
-                    this->dd->render.invalidate = TRUE;
+                    if (this->dd->render.stretched)
+                        this->dd->render.invalidate = TRUE;
 
-                BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC,
-                    this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+                    BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC,
+                           this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+                }
+                LeaveCriticalSection(&this->lock);
+                break;
+
+            case RENDERER_OPENGL:
+                EnterCriticalSection(&this->lock);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+                // Is glFinish needed here for thread safety?
+                //glFinish();
+                LeaveCriticalSection(&this->lock);
+
+                if (ShouldStretch(this))
+                    glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->dd->render.viewport.height,
+                               this->dd->render.viewport.width, this->dd->render.viewport.height);
+                else
+                    glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
+                glBegin(GL_TRIANGLE_FAN);
+
+                glTexCoord2f(0,0); glVertex2f(-1, 1);
+                glTexCoord2f(1,0); glVertex2f( 1, 1);
+                glTexCoord2f(1,1); glVertex2f( 1, -1);
+                glTexCoord2f(0,1); glVertex2f(-1, -1);
+
+                glEnd();
+                if ( (gle = glGetError()) != GL_NO_ERROR )
+                {
+                    printf("glEnd, %x\n", gle);
+                }
+
+                glFinish();
+                SwapBuffers(this->dd->hDC);
+                break;
+
+            default:
+                break;
             }
 
             if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
@@ -124,7 +203,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
             EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
 
-            LeaveCriticalSection(&this->lock);
             dropFrames = -1;
         }
 
@@ -186,6 +264,12 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             totalDroppedFrames += dropFrames;
         }
     }
+
+    if (Renderer == RENDERER_OPENGL)
+    {
+        wglMakeCurrent(NULL, NULL);
+        wglDeleteContext(hRC);
+    }
     return 0;
 }
 
@@ -230,23 +314,64 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->lXPitch = this->bpp / 8;
     this->lPitch = this->width * this->lXPitch;
 
-    this->hDC = CreateCompatibleDC(this->dd->hDC);
 
     /* Tiberian Sun sometimes tries to access lines that are past the bottom of the screen */
     int guardLines = 0; // doesn't work (yet)
 
-    this->overlay = calloc(1, this->lPitch * (this->height + guardLines));
+    if (Renderer == RENDERER_OPENGL)
+    {
+        this->hDC = CreateCompatibleDC(this->dd->hDC);
 
-    this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * (this->height + guardLines)));
-    this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
-    this->bmi->bmiHeader.biWidth = this->width;
-    this->bmi->bmiHeader.biHeight = -this->height;
-    this->bmi->bmiHeader.biPlanes = 1;
-    this->bmi->bmiHeader.biBitCount = this->bpp;
-    this->bmi->bmiHeader.biCompression = BI_RGB;
+        this->overlay = calloc(1, this->lPitch * (this->height + guardLines));
 
-    this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
-    SelectObject(this->hDC, this->bitmap);
+        //this->surface = calloc(1, this->lPitch * (this->height + guardLines));
+
+        this->desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
+        this->desc.dwWidth = this->width;
+        this->desc.dwHeight = this->height;
+        this->desc.lPitch = this->lPitch;
+        this->desc.ddpfPixelFormat.dwSize = 32;
+        this->desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
+        this->desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
+        this->desc.ddpfPixelFormat.dwRBitMask = 0xF800;
+        this->desc.ddpfPixelFormat.dwGBitMask = 0x07E0;
+        this->desc.ddpfPixelFormat.dwBBitMask = 0x001F;
+
+        this->desc.dwFlags = 0x0000100F;
+        this->desc.ddsCaps.dwCaps = this->dwCaps;
+
+        this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 3));
+        this->bmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        this->bmi->bmiHeader.biWidth = this->width;
+        this->bmi->bmiHeader.biHeight = -this->height;
+        this->bmi->bmiHeader.biPlanes = 1;
+        this->bmi->bmiHeader.biBitCount = this->bpp;
+        this->bmi->bmiHeader.biCompression = BI_BITFIELDS;
+
+        ((DWORD *)this->bmi->bmiColors)[0] = this->desc.ddpfPixelFormat.dwRBitMask;
+        ((DWORD *)this->bmi->bmiColors)[1] = this->desc.ddpfPixelFormat.dwGBitMask;
+        ((DWORD *)this->bmi->bmiColors)[2] = this->desc.ddpfPixelFormat.dwBBitMask;
+
+        this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
+        SelectObject(this->hDC, this->bitmap);
+    }
+    else
+    {
+        this->hDC = CreateCompatibleDC(this->dd->hDC);
+
+        this->overlay = calloc(1, this->lPitch * (this->height + guardLines));
+
+        this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * (this->height + guardLines)));
+        this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
+        this->bmi->bmiHeader.biWidth = this->width;
+        this->bmi->bmiHeader.biHeight = -this->height;
+        this->bmi->bmiHeader.biPlanes = 1;
+        this->bmi->bmiHeader.biBitCount = this->bpp;
+        this->bmi->bmiHeader.biCompression = BI_RGB;
+
+        this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
+        SelectObject(this->hDC, this->bitmap);
+    }
 
     InitializeCriticalSection(&this->lock);
 
@@ -413,135 +538,13 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
             int src_w = src.right - src.left;
             int src_h = src.bottom - src.top;
 
-            int dst_byte_width = dst_w * this->lXPitch;
-
             if (dst_w == src_w && dst_h == src_h)
             {
-                //BitBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, SRCCOPY);
-                
-                // The simplest possiblity: no scaling needed
-                uint16_t *dest_base = this->surface + dst.left + (this->width * dst.top);
-                uint16_t *src_base = srcImpl->surface + src.left + (srcImpl->width * src.top);
-
-                while (dst_h-- > 0)
-                {
-                    memcpy((void *)dest_base, (void *)src_base, dst_byte_width);
-
-                    dest_base += this->width;
-                    src_base += srcImpl->width;
-                }
+                BitBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, SRCCOPY);
             }
             else
             {
-                //StretchBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, src_w, src_h, SRCCOPY);
-
-                /* Linear scaling using integer math
-                 * Since the scaling pattern for x will aways be the same, the pattern itself gets pre-calculated
-                 * and stored in an array.
-                 * Y scaling pattern gets calculated during the blit loop
-                 */
-                unsigned int x_ratio = (unsigned int)((src_w << 16) / dst_w) + 1;
-                unsigned int y_ratio = (unsigned int)((src_h << 16) / dst_h) + 1;
-
-                unsigned int src_x, src_y;
-                unsigned int dest_base, source_base;
-
-                scale_pattern *pattern = malloc((dst_w + 1) * (sizeof(scale_pattern)));
-                int pattern_idx = 0;
-                unsigned int last_src_x = 0;
-
-                if (pattern != NULL)
-                {
-                    pattern[pattern_idx] = (scale_pattern){ ONCE, 0, 0, 1 };
-
-                    /* Build the pattern! */
-                    for (int x = 1; x < dst_w; x++) {
-                        src_x = (x * x_ratio) >> 16;
-                        if (src_x == last_src_x)
-                        {
-                            if (pattern[pattern_idx].type == REPEAT || pattern[pattern_idx].type == ONCE)
-                            {
-                                pattern[pattern_idx].type = REPEAT;
-                                pattern[pattern_idx].count++;
-                            }
-                            else if (pattern[pattern_idx].type == SEQUENCE)
-                            {
-                                pattern_idx++;
-                                pattern[pattern_idx] = (scale_pattern){ REPEAT, x, src_x, 1 };
-                            }
-                        }
-                        else if (src_x == last_src_x + 1)
-                        {
-                            if (pattern[pattern_idx].type == SEQUENCE || pattern[pattern_idx].type == ONCE)
-                            {
-                                pattern[pattern_idx].type = SEQUENCE;
-                                pattern[pattern_idx].count++;
-                            }
-                            else if (pattern[pattern_idx].type == REPEAT)
-                            {
-                                pattern_idx++;
-                                pattern[pattern_idx] = (scale_pattern){ ONCE, x, src_x, 1 };
-                            }
-                        }
-                        else
-                        {
-                            pattern_idx++;
-                            pattern[pattern_idx] = (scale_pattern){ ONCE, x, src_x, 1 };
-                        }
-                        last_src_x = src_x;
-                    }
-                    pattern[pattern_idx+1] = (scale_pattern){ END, 0, 0, 0 };
-
-
-                    /* Do the actual blitting */
-                    uint16_t *d, *s, v;
-                    int count = 0;
-
-                    for (int y = 0; y < dst_h; y++) {
-
-                        dest_base = dst.left + this->width * (y + dst.top);
-
-                        src_y = (y * y_ratio) >> 16;
-
-                        source_base = src.left + srcImpl->width * (src_y + src.top);
-
-                        pattern_idx = 0;
-                        scale_pattern *current = &pattern[pattern_idx];
-                        do {
-                            switch(current->type)
-                            {
-                            case ONCE:
-                                this->surface[dest_base + current->dst_index] =
-                                    srcImpl->surface[source_base + current->src_index];
-                                break;
-
-                            case REPEAT:
-                                d = (this->surface + dest_base + current->dst_index);
-                                v = srcImpl->surface[source_base + current->src_index];
-
-                                count = current->count;
-                                while (count-- > 0)
-                                    *d++ = v;
-
-                                break;
-
-                            case SEQUENCE:
-                                d = this->surface + dest_base + current->dst_index;
-                                s = srcImpl->surface + source_base + current->src_index;
-
-                                memcpy((void *)d, (void *)s, current->count * this->lXPitch);
-                                break;
-
-                            case END:
-                            default:
-                                break;
-                            }
-
-                            current = &pattern[++pattern_idx];
-                        } while (current->type != END);
-                    }
-                    free(pattern);
-                }
+                StretchBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, src_w, src_h, SRCCOPY);
             }
             LeaveCriticalSection(&this->lock);
         }
@@ -647,19 +650,38 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
     }
     else
     {
-        lpDDSurfaceDesc->dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-        lpDDSurfaceDesc->dwWidth = this->width;
-        lpDDSurfaceDesc->dwHeight = this->height;
-        lpDDSurfaceDesc->lPitch = this->lPitch;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
+        if (Renderer == RENDERER_OPENGL)
+        {
+            lpDDSurfaceDesc->dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
+            lpDDSurfaceDesc->dwWidth = this->width;
+            lpDDSurfaceDesc->dwHeight = this->height;
+            lpDDSurfaceDesc->lPitch = this->lPitch;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
 
-        lpDDSurfaceDesc->dwFlags = 0x0000100F;
-        lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
+            lpDDSurfaceDesc->dwFlags = 0x0000100F;
+            lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
+        }
+        else
+        {
+            lpDDSurfaceDesc->dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
+            lpDDSurfaceDesc->dwWidth = this->width;
+            lpDDSurfaceDesc->dwHeight = this->height;
+            lpDDSurfaceDesc->lPitch = this->lPitch;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
+            lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
+
+            lpDDSurfaceDesc->dwFlags = 0x0000100F;
+            lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
+        }
     }
 
     dump_ddsurfacedesc(lpDDSurfaceDesc);

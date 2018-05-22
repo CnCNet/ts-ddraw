@@ -56,6 +56,15 @@ int DrawFPS;
 DWORD TargetFPS;
 DWORD TargetFrameLen;
 bool SingleProcAffinity;
+int SwapInterval;
+
+typedef enum RendererType {
+    RENDERER_GDI,
+    RENDERER_OPENGL,
+} RendererType;
+
+RendererType Renderer;
+bool AutoRenderer;
 
 #define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)
 

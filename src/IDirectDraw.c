@@ -108,7 +108,7 @@ static HRESULT __stdcall _CreatePalette(IDirectDrawImpl *this, DWORD dwFlags, LP
     HRESULT ret = IDirectDraw_CreatePalette(this->real, dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter);
 
     dprintf(
-        "<-- IDirectDraw::CreatePalette(this=%p, dwFlags=%d, lpDDColorArray=%p, lplpDDPalette=%p, pUnkOuter=%p) -> %08X\n", 
+        "<-- IDirectDraw::CreatePalette(this=%p, dwFlags=%d, lpDDColorArray=%p, lplpDDPalette=%p, pUnkOuter=%p) -> %08X\n",
         this, (int)dwFlags, lpDDColorArray, lplpDDPalette, pUnkOuter, (int)ret);
     return ret;
 }
@@ -212,7 +212,7 @@ static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags,
     }
 
     dprintf(
-        "<-- IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p) -> %08X\n", 
+        "<-- IDirectDraw::EnumDisplayModes(this=%p, dwFlags=%08X, lpDDSurfaceDesc=%p, lpContext=%p, lpEnumModesCallback=%p) -> %08X\n",
         this, (int)dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback, (int)ret);
 
     return ret;
@@ -227,7 +227,7 @@ static HRESULT __stdcall _EnumSurfaces(IDirectDrawImpl *this, DWORD dwFlags, LPD
     HRESULT ret = IDirectDraw_EnumSurfaces(this->real, dwFlags, lpDDSD, lpContext, lpEnumSurfacesCallback);
 
     dprintf(
-        "<-- IDirectDraw::EnumSurfaces(this=%p, dwFlags=%08X, lpDDSD=%p, lpContext=%p, lpEnumSurfacesCallback=%p) -> %08X\n", 
+        "<-- IDirectDraw::EnumSurfaces(this=%p, dwFlags=%08X, lpDDSD=%p, lpContext=%p, lpEnumSurfacesCallback=%p) -> %08X\n",
         this, (int)dwFlags, lpDDSD, lpContext, lpEnumSurfacesCallback, (int)ret);
 
     return ret;
@@ -244,7 +244,7 @@ static HRESULT __stdcall _FlipToGDISurface(IDirectDrawImpl *this)
 static HRESULT __stdcall _GetCaps(IDirectDrawImpl *this, LPDDCAPS lpDDDriverCaps, LPDDCAPS lpDDEmulCaps)
 {
     dprintf(
-        "--> IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p)\n", 
+        "--> IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p)\n",
         this, lpDDDriverCaps, lpDDEmulCaps);
 
 
@@ -297,7 +297,7 @@ static HRESULT __stdcall _GetCaps(IDirectDrawImpl *this, LPDDCAPS lpDDDriverCaps
     }
 
     dprintf(
-        "<-- IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p) -> %08X\n", 
+        "<-- IDirectDraw::GetCaps(this=%p, lpDDDriverCaps=%p, lpDDEmulCaps=%p) -> %08X\n",
         this, lpDDDriverCaps, lpDDEmulCaps, (int)ret);
 
     return ret;
@@ -419,7 +419,7 @@ void SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
     {
         this->render.viewport.width = this->width;
         this->render.viewport.height = this->height;
-        
+
         for (int i = 20; i-- > 1;)
         {
             if (this->width * i <= this->render.width && this->height * i <= this->render.height)
@@ -460,7 +460,7 @@ void SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
         this->render.viewport.y != 0;
 
     SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
-    
+
     this->render.invalidate = TRUE;
 }
 
@@ -478,7 +478,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
     {
         if (bpp != 16)
             return DDERR_INVALIDMODE;
-        
+
         SetWindowSize(this, width, height);
 
         this->bpp = bpp;
@@ -490,7 +490,11 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             memset(&pfd, 0, sizeof(pfd));
             pfd.nSize = sizeof(pfd);
             pfd.nVersion = 1;
-            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+
+            if (Renderer == RENDERER_OPENGL)
+                pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
+            else
+                pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
             pfd.iPixelType = PFD_TYPE_RGBA;
             pfd.cColorBits = this->bpp;
             pfd.iLayerType = PFD_MAIN_PLANE;
@@ -546,7 +550,7 @@ BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int
         SetWindowSize(ddraw, cx, cy);
         return TRUE;
     }
-        
+
     return SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
@@ -791,7 +795,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             this->wndProc = (LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
 
             SetWindowLong(this->hWnd, GWL_WNDPROC, (LONG)WndProc);
-            
+
             if (!IsWindowsXp())
             {
                 PIXELFORMATDESCRIPTOR pfd;
@@ -799,7 +803,11 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
                 memset(&pfd, 0, sizeof(pfd));
                 pfd.nSize = sizeof(pfd);
                 pfd.nVersion = 1;
-                pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+
+                if (Renderer == RENDERER_OPENGL)
+                    pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
+                else
+                    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
                 pfd.iPixelType = PFD_TYPE_RGBA;
                 pfd.cColorBits = this->bpp;
                 pfd.iLayerType = PFD_MAIN_PLANE;

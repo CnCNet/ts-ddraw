@@ -5,15 +5,16 @@ WINDRES ?= windres
 STRIP ?= strip
 COPY ?= copy
 
-CFLAGS=--std=c99 -Wall -Wl,--enable-stdcall-fixup -O6 -g
-LIBS=-lgdi32 -lwinmm
+CFLAGS=--std=c99 -Iinc -Wall -Wl,--enable-stdcall-fixup -O6 -g
+LIBS=-lgdi32 -lwinmm -lopengl32
 
 FILES = src/main.c \
         src/IDirectDraw.c \
         src/IDirectDrawClipper.c \
         src/IDirectDrawSurface.c \
         src/hook.c \
-        src/Settings.c
+        src/Settings.c \
+        src/opengl.c
 
 all: debug
 

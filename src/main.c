@@ -45,6 +45,9 @@ int DrawFPS = 0;
 
 DWORD TargetFPS = 62;
 DWORD TargetFrameLen = 16;
+RendererType Renderer = RENDERER_OPENGL;
+bool AutoRenderer = true;
+int SwapInterval = 0;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {
