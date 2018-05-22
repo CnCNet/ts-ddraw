@@ -33,6 +33,9 @@
     <ClCompile Include="src\Settings.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\opengl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\scale_pattern.h">
@@ -54,6 +57,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Settings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\opengl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\glext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
