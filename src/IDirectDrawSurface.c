@@ -97,26 +97,46 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         wglMakeCurrent(this->dd->hDC, hRC);
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("wglMakeCurrent, %x\n", gle);
 
         OpenGL_Init();
 
-        wglSwapIntervalEXT(SwapInterval);
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (wglSwapIntervalEXT)
+        {
+            wglSwapIntervalEXT(SwapInterval);
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        }
+        if (gle != GL_NO_ERROR)
+            dprintf("wglSwapIntervalEXT, %x\n", gle);
 
         glGenTextures(1, &textureID);
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glGenTextures, %x\n", gle);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+        if ( (gle = glGetError()) != GL_NO_ERROR )
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glTexImage2D, %x\n", gle);
 
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glTexParameteri MIN, %x\n", gle);
 
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glTexParameteri MAG, %x\n", gle);
 
         glEnable(GL_TEXTURE_2D);
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glEnable, %x\n", gle);
     }
 
     if (failToGDI && AutoRenderer)
@@ -185,13 +205,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 glTexCoord2f(0,1); glVertex2f(-1, -1);
 
                 glEnd();
-                if ( (gle = glGetError()) != GL_NO_ERROR )
-                {
-                    printf("glEnd, %x\n", gle);
-                }
 
-                glFinish();
+                //glFinish();
                 SwapBuffers(this->dd->hDC);
+
                 break;
 
             default:

@@ -20,7 +20,7 @@ void SettingsLoad()
     StretchToWidth = GetInt("StretchToWidth", StretchToWidth);
     StretchToHeight = GetInt("StretchToHeight", StretchToHeight);
     DrawFPS = GetInt("DrawFPS", DrawFPS);
-    Renderer = GetRenderer("Renderer", "opengl", &AutoRenderer);
+    Renderer = GetRenderer("Renderer", "auto", &AutoRenderer);
 
     if (GetBool("VSync", false))
         SwapInterval = 1;
@@ -70,6 +70,8 @@ RendererType GetRenderer(LPCSTR key, char *defaultValue, bool *autoRenderer)
             return RENDERER_OPENGL;
         else if (_strcmpi(defaultValue, "gdi") == 0)
             return RENDERER_GDI;
+        else if (_strcmpi(defaultValue, "auto") == 0)
+            return RENDERER_OPENGL;
     }
     return RENDERER_GDI;
 }

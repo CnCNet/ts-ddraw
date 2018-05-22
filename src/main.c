@@ -321,5 +321,11 @@ BOOL IsWindowsXp()
     DWORD version = GetVersion();
     DWORD major = (DWORD)(LOBYTE(LOWORD(version)));
     DWORD minor = (DWORD)(HIBYTE(LOWORD(version)));
-    return ((major == 5) && (minor == 1));
+    if ((major == 5) && (minor == 1))
+    {
+        // Check for wine
+        HANDLE dll = GetModuleHandleA("ntdll.dll");
+        return !GetProcAddress(dll, "wine_get_version");
+    }
+    return false;
 }
