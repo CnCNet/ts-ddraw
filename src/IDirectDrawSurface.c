@@ -438,6 +438,7 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
         DeleteDC(this->hDC);
         if (this->overlayBitmap)
         {
+            this->overlay = NULL;
             DeleteObject(this->overlayBitmap);
         }
         if (this->overlayDC)
