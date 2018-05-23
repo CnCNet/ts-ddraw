@@ -664,6 +664,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
                     mouse_lock(hWnd);
+                    InterlockedExchange(&this->dd->focusGained, true);
                 }
                 else if (wParam == WA_INACTIVE)
                 {
@@ -763,6 +764,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (InterlockedCompareExchange(&Renderer, RENDERER_GDI, RENDERER_OPENGL) == RENDERER_GDI)
                     InterlockedExchange(&Renderer, RENDERER_OPENGL);
+                InterlockedExchange(&this->dd->focusGained, true);
             }
             break;
 

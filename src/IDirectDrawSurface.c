@@ -154,13 +154,16 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             dropFrames--;
         else
         {
-
             switch(InterlockedExchangeAdd((LONG*)&Renderer, 0))
             {
             case RENDERER_GDI:
                 EnterCriticalSection(&this->lock);
                 if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
+                {
+                    textRect.left = this->dd->winRect.left;
+                    textRect.top = this->dd->winRect.top;
                     DrawText(this->hDC, fpsGDIString, -1, &textRect, DT_NOCLIP);
+                }
 
                 if (ShouldStretch(this))
                 {
@@ -192,11 +195,12 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             case RENDERER_OPENGL:
                 EnterCriticalSection(&this->lock);
                 if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
+                {
+                    textRect.left = this->dd->winRect.left;
+                    textRect.top = this->dd->winRect.top;
                     DrawText(this->hDC, fpsOglString, -1, &textRect, DT_NOCLIP);
-
+                }
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
-                // Is glFinish needed here for thread safety?
-                //glFinish();
                 LeaveCriticalSection(&this->lock);
 
                 if (ShouldStretch(this))
@@ -212,8 +216,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 glTexCoord2f(0,1); glVertex2f(-1, -1);
 
                 glEnd();
-
-                glFinish();
                 SwapBuffers(this->dd->hDC);
 
                 break;
@@ -286,9 +288,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             }
             totalDroppedFrames += dropFrames;
         }
-        if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL && InterlockedCompareExchange(&this->dd->focusGained, false, true))
+        if (InterlockedCompareExchange(&this->dd->focusGained, false, true))
         {
-            wglMakeCurrent(this->dd->hDC, hRC);
+            if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+                wglMakeCurrent(this->dd->hDC, hRC);
         }
     }
 
