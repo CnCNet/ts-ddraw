@@ -78,7 +78,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     int rIndex = 0;
 
     RECT textRect = (RECT){0,0,0,0};
-    char fpsString[256] = "FPS: NA\nTGT: NA\nDropped: NA";
+    char fpsOglString[256] = "OpenGL\nFPS: NA\nTGT: NA\nDropped: NA";
+    char fpsGDIString[256] = "GDI\nFPS: NA\nTGT: NA\nDropped: NA";
     DWORD avg_fps = 0;
 
 #ifdef _DEBUG
@@ -91,7 +92,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     GLenum gle;
     bool failToGDI = false;
 
-    if (Renderer == RENDERER_OPENGL)
+    if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
     {
         hRC = wglCreateContext(this->dd->hDC);
 
@@ -141,7 +142,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     if (failToGDI && AutoRenderer)
     {
-        Renderer = RENDERER_GDI;
+        InterlockedExchange(&Renderer, RENDERER_GDI);
     }
 
     while (this->thread)
@@ -154,10 +155,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         else
         {
 
-            switch(Renderer)
+            switch(InterlockedExchangeAdd((LONG*)&Renderer, 0))
             {
             case RENDERER_GDI:
                 EnterCriticalSection(&this->lock);
+                if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
+                    DrawText(this->hDC, fpsGDIString, -1, &textRect, DT_NOCLIP);
+
                 if (ShouldStretch(this))
                 {
                     if (this->dd->render.invalidate)
@@ -187,6 +191,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
             case RENDERER_OPENGL:
                 EnterCriticalSection(&this->lock);
+                if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
+                    DrawText(this->hDC, fpsOglString, -1, &textRect, DT_NOCLIP);
+
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
                 // Is glFinish needed here for thread safety?
                 //glFinish();
@@ -215,8 +222,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 break;
             }
 
-            if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
-                DrawText(this->dd->hDC, fpsString, -1, &textRect, DT_NOCLIP);
 
             EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
 
@@ -256,7 +261,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             avg_len = render_time / FRAME_SAMPLES;
             avg_fps = 1000 / avg_len;
 
-            _snprintf(fpsString, 254, "FPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
+            _snprintf(fpsOglString, 254, "OpenGL\nFPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
+            _snprintf(fpsGDIString, 254, "GDI\nFPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
         }
 
         if (startTargetFPS != TargetFPS)
@@ -280,13 +286,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             }
             totalDroppedFrames += dropFrames;
         }
-        if (Renderer == RENDERER_OPENGL && InterlockedCompareExchange(&this->dd->focusGained, false, true))
+        if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL && InterlockedCompareExchange(&this->dd->focusGained, false, true))
         {
             wglMakeCurrent(this->dd->hDC, hRC);
         }
     }
 
-    if (Renderer == RENDERER_OPENGL)
+    if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
     {
         wglMakeCurrent(NULL, NULL);
         wglDeleteContext(hRC);
@@ -337,7 +343,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
 
 
     /* Tiberian Sun sometimes tries to access lines that are past the bottom of the screen */
-    int guardLines = 0; // doesn't work (yet)
+    //int guardLines = 0; // doesn't work (yet)
 
     this->hDC = CreateCompatibleDC(this->dd->hDC);
 

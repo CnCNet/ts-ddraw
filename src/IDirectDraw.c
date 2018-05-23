@@ -491,7 +491,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             pfd.nSize = sizeof(pfd);
             pfd.nVersion = 1;
 
-            if (Renderer == RENDERER_OPENGL)
+            if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
                 pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
             else
                 pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
@@ -718,6 +718,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_SYSKEYDOWN:
             if (wParam != VK_F4)
                 return 0;
+            break;
 
         case WM_KEYDOWN:
 
@@ -758,6 +759,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 TargetFrameLen = 1000.0f / TargetFPS;
             }
 
+            if ((wParam == VK_END) && (GetAsyncKeyState(VK_RCONTROL) & 0x8000) && AutoRenderer == true)
+            {
+                if (InterlockedCompareExchange(&Renderer, RENDERER_GDI, RENDERER_OPENGL) == RENDERER_GDI)
+                    InterlockedExchange(&Renderer, RENDERER_OPENGL);
+            }
             break;
 
         case WM_MOUSELEAVE:
@@ -805,7 +811,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
                 pfd.nSize = sizeof(pfd);
                 pfd.nVersion = 1;
 
-                if (Renderer == RENDERER_OPENGL)
+                if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
                     pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
                 else
                     pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;

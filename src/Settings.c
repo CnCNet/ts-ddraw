@@ -5,7 +5,7 @@
 #include "main.h"
 
 static bool GetBool(LPCTSTR key, bool defaultValue);
-RendererType GetRenderer(LPCSTR key, char *defaultValue, bool *autoRenderer);
+LONG GetRenderer(LPCSTR key, char *defaultValue, bool *autoRenderer);
 #define GetInt(a,b) GetPrivateProfileInt(SettingsSection,a,b,SettingsPath)
 #define GetString(a,b,c,d) GetPrivateProfileString(SettingsSection,a,b,c,d,SettingsPath)
 
@@ -20,7 +20,7 @@ void SettingsLoad()
     StretchToWidth = GetInt("StretchToWidth", StretchToWidth);
     StretchToHeight = GetInt("StretchToHeight", StretchToHeight);
     DrawFPS = GetInt("DrawFPS", DrawFPS);
-    Renderer = GetRenderer("Renderer", "auto", &AutoRenderer);
+    InterlockedExchange(&Renderer, GetRenderer("Renderer", "auto", &AutoRenderer));
 
     if (GetBool("VSync", false))
         SwapInterval = 1;
@@ -48,7 +48,7 @@ static bool GetBool(LPCTSTR key, bool defaultValue)
     return (_strcmpi(value, "yes") == 0 || _strcmpi(value, "true") == 0 || _strcmpi(value, "1") == 0);
 }
 
-RendererType GetRenderer(LPCSTR key, char *defaultValue, bool *autoRenderer)
+LONG GetRenderer(LPCSTR key, char *defaultValue, bool *autoRenderer)
 {
     char value[256];
     GetString(key, defaultValue, value, 256);

@@ -58,12 +58,11 @@ DWORD TargetFrameLen;
 bool SingleProcAffinity;
 int SwapInterval;
 
-typedef enum RendererType {
-    RENDERER_GDI,
-    RENDERER_OPENGL,
-} RendererType;
+// RendererTypes
+#define RENDERER_GDI 0
+#define RENDERER_OPENGL 1
 
-RendererType Renderer;
+LONG Renderer;
 bool AutoRenderer;
 
 #define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)

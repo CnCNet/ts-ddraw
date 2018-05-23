@@ -45,7 +45,7 @@ int DrawFPS = 0;
 
 DWORD TargetFPS = 62;
 DWORD TargetFrameLen = 16;
-RendererType Renderer = RENDERER_OPENGL;
+LONG Renderer = RENDERER_OPENGL;
 bool AutoRenderer = true;
 int SwapInterval = 0;
 
