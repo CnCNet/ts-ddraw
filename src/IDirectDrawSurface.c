@@ -339,60 +339,36 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     /* Tiberian Sun sometimes tries to access lines that are past the bottom of the screen */
     int guardLines = 0; // doesn't work (yet)
 
-    if (Renderer == RENDERER_OPENGL)
-    {
-        this->hDC = CreateCompatibleDC(this->dd->hDC);
+    this->hDC = CreateCompatibleDC(this->dd->hDC);
 
-        this->overlay = calloc(1, this->lPitch * (this->height + guardLines));
+    this->desc.dwFlags = DDSD_WIDTH | DDSD_HEIGHT | DDSD_PITCH | DDSD_PIXELFORMAT | DDSD_LPSURFACE;
+    this->desc.dwWidth = this->width;
+    this->desc.dwHeight = this->height;
+    this->desc.lPitch = this->lPitch;
+    this->desc.ddpfPixelFormat.dwSize = 32;
+    this->desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
+    this->desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
+    this->desc.ddpfPixelFormat.dwRBitMask = 0xF800;
+    this->desc.ddpfPixelFormat.dwGBitMask = 0x07E0;
+    this->desc.ddpfPixelFormat.dwBBitMask = 0x001F;
 
-        //this->surface = calloc(1, this->lPitch * (this->height + guardLines));
+    this->desc.dwFlags = 0x0000100F;
+    this->desc.ddsCaps.dwCaps = this->dwCaps;
 
-        this->desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-        this->desc.dwWidth = this->width;
-        this->desc.dwHeight = this->height;
-        this->desc.lPitch = this->lPitch;
-        this->desc.ddpfPixelFormat.dwSize = 32;
-        this->desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
-        this->desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        this->desc.ddpfPixelFormat.dwRBitMask = 0xF800;
-        this->desc.ddpfPixelFormat.dwGBitMask = 0x07E0;
-        this->desc.ddpfPixelFormat.dwBBitMask = 0x001F;
+    this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 3));
+    this->bmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    this->bmi->bmiHeader.biWidth = this->width;
+    this->bmi->bmiHeader.biHeight = -this->height;
+    this->bmi->bmiHeader.biPlanes = 1;
+    this->bmi->bmiHeader.biBitCount = this->bpp;
+    this->bmi->bmiHeader.biCompression = BI_BITFIELDS;
 
-        this->desc.dwFlags = 0x0000100F;
-        this->desc.ddsCaps.dwCaps = this->dwCaps;
+    ((DWORD *)this->bmi->bmiColors)[0] = this->desc.ddpfPixelFormat.dwRBitMask;
+    ((DWORD *)this->bmi->bmiColors)[1] = this->desc.ddpfPixelFormat.dwGBitMask;
+    ((DWORD *)this->bmi->bmiColors)[2] = this->desc.ddpfPixelFormat.dwBBitMask;
 
-        this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 3));
-        this->bmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        this->bmi->bmiHeader.biWidth = this->width;
-        this->bmi->bmiHeader.biHeight = -this->height;
-        this->bmi->bmiHeader.biPlanes = 1;
-        this->bmi->bmiHeader.biBitCount = this->bpp;
-        this->bmi->bmiHeader.biCompression = BI_BITFIELDS;
-
-        ((DWORD *)this->bmi->bmiColors)[0] = this->desc.ddpfPixelFormat.dwRBitMask;
-        ((DWORD *)this->bmi->bmiColors)[1] = this->desc.ddpfPixelFormat.dwGBitMask;
-        ((DWORD *)this->bmi->bmiColors)[2] = this->desc.ddpfPixelFormat.dwBBitMask;
-
-        this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
-        SelectObject(this->hDC, this->bitmap);
-    }
-    else
-    {
-        this->hDC = CreateCompatibleDC(this->dd->hDC);
-
-        this->overlay = calloc(1, this->lPitch * (this->height + guardLines));
-
-        this->bmi = calloc(1, sizeof(BITMAPINFO) + (this->lPitch * (this->height + guardLines)));
-        this->bmi->bmiHeader.biSize = sizeof(BITMAPINFO);
-        this->bmi->bmiHeader.biWidth = this->width;
-        this->bmi->bmiHeader.biHeight = -this->height;
-        this->bmi->bmiHeader.biPlanes = 1;
-        this->bmi->bmiHeader.biBitCount = this->bpp;
-        this->bmi->bmiHeader.biCompression = BI_RGB;
-
-        this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
-        SelectObject(this->hDC, this->bitmap);
-    }
+    this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
+    SelectObject(this->hDC, this->bitmap);
 
     InitializeCriticalSection(&this->lock);
 
@@ -457,7 +433,6 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
             dprintf("Renderer stopped.\n");
         }
 
-        free(this->overlay);
         DeleteCriticalSection(&this->lock);
         DeleteObject(this->bitmap);
         DeleteDC(this->hDC);
@@ -671,38 +646,19 @@ static HRESULT __stdcall _GetSurfaceDesc(IDirectDrawSurfaceImpl *this, LPDDSURFA
     }
     else
     {
-        if (Renderer == RENDERER_OPENGL)
-        {
-            lpDDSurfaceDesc->dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-            lpDDSurfaceDesc->dwWidth = this->width;
-            lpDDSurfaceDesc->dwHeight = this->height;
-            lpDDSurfaceDesc->lPitch = this->lPitch;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
+        lpDDSurfaceDesc->dwFlags = DDSD_WIDTH | DDSD_HEIGHT | DDSD_PITCH | DDSD_PIXELFORMAT | DDSD_LPSURFACE;
+        lpDDSurfaceDesc->dwWidth = this->width;
+        lpDDSurfaceDesc->dwHeight = this->height;
+        lpDDSurfaceDesc->lPitch = this->lPitch;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
 
-            lpDDSurfaceDesc->dwFlags = 0x0000100F;
-            lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
-        }
-        else
-        {
-            lpDDSurfaceDesc->dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PITCH|DDSD_PIXELFORMAT|DDSD_LPSURFACE;
-            lpDDSurfaceDesc->dwWidth = this->width;
-            lpDDSurfaceDesc->dwHeight = this->height;
-            lpDDSurfaceDesc->lPitch = this->lPitch;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
-            lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
-
-            lpDDSurfaceDesc->dwFlags = 0x0000100F;
-            lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
-        }
+        lpDDSurfaceDesc->dwFlags = 0x0000100F;
+        lpDDSurfaceDesc->ddsCaps.dwCaps = this->dwCaps;
     }
 
     dump_ddsurfacedesc(lpDDSurfaceDesc);
@@ -786,7 +742,7 @@ HRESULT __stdcall _GetDC(IDirectDrawSurfaceImpl *this, HDC FAR *lphDC)
         if (!this->overlayDC)
         {
             this->overlayDC = CreateCompatibleDC(this->dd->hDC);
-            this->overlayBitmap = CreateCompatibleBitmap(this->dd->hDC, this->width, this->height);
+            this->overlayBitmap = CreateDIBSection(this->overlayDC, this->bmi, DIB_RGB_COLORS, (void **)&this->overlay, NULL, 0);
         }
 
         EnterCriticalSection(&this->lock);
@@ -822,8 +778,8 @@ HRESULT __stdcall _GetPixelFormat(IDirectDrawSurfaceImpl *this, LPDDPIXELFORMAT 
 
     lpDDPixelFormat->dwFlags = DDPF_RGB;
     lpDDPixelFormat->dwRGBBitCount = this->bpp;
-    lpDDPixelFormat->dwRBitMask = 0x7C00;
-    lpDDPixelFormat->dwGBitMask = 0x03E0;
+    lpDDPixelFormat->dwRBitMask = 0xF800;
+    lpDDPixelFormat->dwGBitMask = 0x07E0;
     lpDDPixelFormat->dwBBitMask = 0x001F;
 
     dprintf("<-- IDirectDrawSurface::GetPixelFormat(this=%p, lpDDPixelFormat=%p)\n", this, lpDDPixelFormat);
@@ -878,8 +834,8 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
         lpDDSurfaceDesc->ddpfPixelFormat.dwSize = 32;
         lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = this->bpp;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x7C00;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x03E0;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xF800;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07E0;
         lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001F;
         lpDDSurfaceDesc->dwFlags = 0x0000100F;
         lpDDSurfaceDesc->ddsCaps.dwCaps = 0x10004000;
@@ -910,8 +866,6 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
     }
     else
     {
-        GetDIBits(this->overlayDC, this->overlayBitmap, 0, this->height, this->overlay, this->bmi, DIB_RGB_COLORS);
-
         // FIXME: using black as magic transparency color
         for (int y = 0; y < this->height; y++)
         {
