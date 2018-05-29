@@ -23,6 +23,7 @@
 #include "opengl.h"
 #include <GL/gl.h>
 #include <GL/glu.h>
+#include "glext.h"
 
 static IDirectDrawSurfaceImplVtbl Vtbl;
 
@@ -51,6 +52,13 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
 
     RECT pos;
     GetWindowRect(hWnd, &pos);
+
+    if (this->usingPBO && InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+    {
+        //the GDI struggle is real
+        // Copy the scanlines of menu windows from pboSurface to the gdi surface
+        SetDIBits(NULL, this->bitmap, pos.top, pos.bottom - pos.top, this->surface, this->bmi, DIB_RGB_COLORS);
+    }
 
     BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
 
@@ -87,74 +95,83 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     int frames = 0;
 #endif
 
-    HGLRC hRC = NULL;
-    GLuint textureID;
-    GLenum gle;
     bool failToGDI = false;
+    GLenum gle;
 
-    if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+    wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_render);
+
+    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+    if (gle != GL_NO_ERROR)
+        dprintf("wglMakeCurrent, %x\n", gle);
+
+    this->dd->glInfo.initialized = true;
+
+    if (wglSwapIntervalEXT)
     {
-        hRC = wglCreateContext(this->dd->hDC);
-
-        wglMakeCurrent(this->dd->hDC, hRC);
+        wglSwapIntervalEXT(SwapInterval);
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("wglMakeCurrent, %x\n", gle);
-
-        OpenGL_Init();
-
-        if (wglSwapIntervalEXT)
-        {
-            wglSwapIntervalEXT(SwapInterval);
-            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        }
-        if (gle != GL_NO_ERROR)
-            dprintf("wglSwapIntervalEXT, %x\n", gle);
-
-        glGenTextures(1, &textureID);
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glGenTextures, %x\n", gle);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
-        if ( (gle = glGetError()) != GL_NO_ERROR )
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
-
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glTexImage2D, %x\n", gle);
-
-        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glTexParameteri MIN, %x\n", gle);
-
-        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glTexParameteri MAG, %x\n", gle);
-
-        glEnable(GL_TEXTURE_2D);
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glEnable, %x\n", gle);
     }
+    if (gle != GL_NO_ERROR)
+        dprintf("wglSwapIntervalEXT, %x\n", gle);
 
-    if (failToGDI && AutoRenderer)
+    glGenTextures(1, &this->texture);
+
+    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+    if (gle != GL_NO_ERROR)
+        dprintf("glGenTextures, %x\n", gle);
+
+    glBindTexture(GL_TEXTURE_2D, this->texture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+    if ( (gle = glGetError()) != GL_NO_ERROR )
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+
+    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+    if (gle != GL_NO_ERROR)
+        dprintf("glTexImage2D, %x\n", gle);
+
+
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+
+    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+    if (gle != GL_NO_ERROR)
+        dprintf("glTexParameteri MIN, %x\n", gle);
+
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+
+    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+    if (gle != GL_NO_ERROR)
+        dprintf("glTexParameteri MAG, %x\n", gle);
+
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
+    if (gle != GL_NO_ERROR)
+        dprintf("glTexParameteri MAX, %x\n", gle);
+
+
+    glEnable(GL_TEXTURE_2D);
+
+    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+    if (gle != GL_NO_ERROR)
+        dprintf("glEnable, %x\n", gle);
+
+    tick_start = timeGetTime();
+
+    if (failToGDI)
     {
         InterlockedExchange(&Renderer, RENDERER_GDI);
+        this->dd->glInfo.glSupported = false;
     }
+    DWORD wfso;
 
-    while (this->thread)
+    while (this->thread && ( wfso = WaitForSingleObject(this->syncEvent, TargetFrameLen) ) != WAIT_FAILED)
     {
-        tick_start = timeGetTime();
-
-
         if (dropFrames > 0)
             dropFrames--;
         else
         {
-            switch(InterlockedExchangeAdd((LONG*)&Renderer, 0))
+            switch(InterlockedExchangeAdd(&Renderer, 0))
             {
             case RENDERER_GDI:
                 EnterCriticalSection(&this->lock);
@@ -193,14 +210,61 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 break;
 
             case RENDERER_OPENGL:
+
+                wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_render);
                 EnterCriticalSection(&this->lock);
                 if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
                 {
                     textRect.left = this->dd->winRect.left;
                     textRect.top = this->dd->winRect.top;
-                    DrawText(this->hDC, fpsOglString, -1, &textRect, DT_NOCLIP);
+
+                    if (this->usingPBO)
+                    {
+                        // Copy the scanlines that will be behind the FPS counter to the GDI surface
+                        memcpy((uint8_t*)this->systemSurface + (textRect.top * this->lPitch),
+                               (uint8_t*)this->surface + (textRect.top * this->lPitch),
+                               textRect.bottom * this->lPitch);
+                        SelectObject(this->hDC, this->bitmap);
+                    }
+
+                    textRect.bottom = DrawText(this->hDC, fpsOglString, -1, &textRect, DT_NOCLIP);
+
+                    if (this->usingPBO)
+                    {
+                        // Copy the scanlines from the gdi surface back to pboSurface
+                        memcpy((uint8_t*)this->surface + (textRect.top * this->lPitch),
+                               (uint8_t*)this->systemSurface + (textRect.top * this->lPitch),
+                               textRect.bottom * this->lPitch);
+                        SelectObject(this->hDC, this->defaultBM);
+                    }
                 }
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+
+                glBindTexture(GL_TEXTURE_2D, this->texture);
+                if (this->usingPBO)
+                {
+                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
+
+                    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, 0);
+
+                    this->pboIndex++;
+                    if (this->pboIndex >= this->pboCount)
+                        this->pboIndex = 0;
+
+                    if (this->pboCount > 1)
+                    {
+                        glBindBuffer(GL_PIXEL_PACK_BUFFER, this->pbo[this->pboIndex]);
+                        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, 0);
+                    }
+                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
+                    this->surface = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
+
+                }
+                else
+                {
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+                }
+
                 LeaveCriticalSection(&this->lock);
 
                 if (ShouldStretch(this))
@@ -208,6 +272,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                                this->dd->render.viewport.width, this->dd->render.viewport.height);
                 else
                     glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
+
                 glBegin(GL_TRIANGLE_FAN);
 
                 glTexCoord2f(0,0); glVertex2f(-1, 1);
@@ -216,7 +281,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 glTexCoord2f(0,1); glVertex2f(-1, -1);
 
                 glEnd();
+
                 SwapBuffers(this->dd->hDC);
+
+                wglMakeCurrent(NULL,NULL);
 
                 break;
 
@@ -279,27 +347,36 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             Sleep(TargetFrameLen - tick_len);
         }
         else if (tick_len > TargetFrameLen)
-        {
+        {/*
             dropFrames = (tick_len * 2) / TargetFrameLen;
 
             if (dropFrames > TargetFPS / 30)
             {
                 showFPS = tick_end + tick_len + 2000;
             }
-            totalDroppedFrames += dropFrames;
+            totalDroppedFrames += dropFrames;*/
         }
         if (InterlockedCompareExchange(&this->dd->focusGained, false, true))
         {
-            if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
-                wglMakeCurrent(this->dd->hDC, hRC);
+            switch (InterlockedExchangeAdd(&Renderer, 0))
+            {
+            case RENDERER_OPENGL:
+                break;
+            case RENDERER_GDI:
+                if (InterlockedExchangeAdd(&PrimarySurfacePBO, 0))
+                {
+                    this->surface = this->systemSurface;
+                    SelectObject(this->hDC, this->bitmap);
+                }
+                break;
+
+            default: break;
+            }
         }
+        tick_start = timeGetTime();
+        ResetEvent(this->syncEvent);
     }
 
-    if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
-    {
-        wglMakeCurrent(NULL, NULL);
-        wglDeleteContext(hRC);
-    }
     return 0;
 }
 
@@ -316,7 +393,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
 
     if (lpDDSurfaceDesc->dwWidth && lpDDSurfaceDesc->dwHeight)
     {
-        this->width = lpDDSurfaceDesc->dwWidth;
+        this->width = (lpDDSurfaceDesc->dwWidth +1) / 2 * 2;
         this->height = lpDDSurfaceDesc->dwHeight;
     }
     else
@@ -344,9 +421,8 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->lXPitch = this->bpp / 8;
     this->lPitch = this->width * this->lXPitch;
 
-
     /* Tiberian Sun sometimes tries to access lines that are past the bottom of the screen */
-    //int guardLines = 0; // doesn't work (yet)
+    int guardLines = 0; // doesn't work (yet)
 
     this->hDC = CreateCompatibleDC(this->dd->hDC);
 
@@ -367,7 +443,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->bmi = calloc(1, sizeof(BITMAPINFO) + (sizeof(RGBQUAD) * 3));
     this->bmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     this->bmi->bmiHeader.biWidth = this->width;
-    this->bmi->bmiHeader.biHeight = -this->height;
+    this->bmi->bmiHeader.biHeight = -(this->height + guardLines);
     this->bmi->bmiHeader.biPlanes = 1;
     this->bmi->bmiHeader.biBitCount = this->bpp;
     this->bmi->bmiHeader.biCompression = BI_BITFIELDS;
@@ -377,12 +453,103 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     ((DWORD *)this->bmi->bmiColors)[2] = this->desc.ddpfPixelFormat.dwBBitMask;
 
     this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
-    SelectObject(this->hDC, this->bitmap);
+    this->defaultBM = SelectObject(this->hDC, this->bitmap);
+
+    this->usingPBO = false;
+    this->systemSurface = this->surface;
 
     InitializeCriticalSection(&this->lock);
 
     if (this->dwCaps & DDSCAPS_PRIMARYSURFACE)
     {
+        this->dd->glInfo.glSupported = true;
+
+        GLenum gle;
+        int i = 0;
+
+        this->dd->glInfo.hRC_render = wglCreateContext(this->dd->hDC);
+        this->dd->glInfo.hRC_main = wglCreateContext(this->dd->hDC);
+        wglShareLists(this->dd->glInfo.hRC_render, this->dd->glInfo.hRC_main);
+
+        wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_main);
+        OpenGL_Init();
+
+        int PBOCount = 1;
+        this->pboCount = InterlockedExchangeAdd(&PrimarySurfacePBO, 0);
+        this->pbo = calloc(PBOCount, sizeof(GLuint));
+        this->pboIndex = 0;
+        if (glGenBuffers)
+        {
+            glGenBuffers(this->pboCount, this->pbo);
+
+            gle = glGetError();
+            if (gle != GL_NO_ERROR)
+            {
+                dprintf("glGenBuffers, %x\n", gle);
+                goto no_pbo;
+            }
+        }
+
+        if (glBindBuffer && gle == GL_NO_ERROR)
+        {
+            for (i = 0; i < this->pboCount; ++i)
+            {
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[i]);
+                gle = glGetError();
+                if (gle != GL_NO_ERROR)
+                {
+                    dprintf("glBindBuffer, %x\n", gle);
+                    goto no_pbo;
+                }
+
+                glBufferData(GL_PIXEL_UNPACK_BUFFER, this->height * this->lPitch, 0, GL_STREAM_DRAW);
+                gle = glGetError();
+                if (gle != GL_NO_ERROR)
+                {
+                    dprintf("glBufferData, %x\n", gle);
+                    goto no_pbo;
+                }
+            }
+
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[0]);
+
+            if (glMapBuffer)
+            {
+                this->pboSurface = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
+
+                gle = glGetError();
+                if (gle != GL_NO_ERROR)
+                {
+                    dprintf("glMapBuffer, %x\n", gle);
+                    goto no_pbo;
+                }
+
+                this->systemSurface = this->surface;
+
+                if (InterlockedExchangeAdd(&PrimarySurfacePBO, 0) && InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+                {
+                    this->usingPBO = true;
+
+                    this->surface = this->pboSurface;
+                    SelectObject(this->hDC, this->defaultBM);
+                }
+
+            }
+            else
+            {
+                goto no_pbo;
+            }
+        }
+        else
+        {
+        no_pbo:
+            this->dd->glInfo.pboSupported = false;
+            this->usingPBO = false;
+            this->pboSurface = NULL;
+        }
+
+        this->syncEvent = CreateEvent(NULL, true, false, NULL);
+
         dprintf("Starting renderer.\n");
         this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
         if (SetThreadPriority(this->thread, THREAD_PRIORITY_ABOVE_NORMAL))
@@ -544,9 +711,26 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
             int src_w = src.right - src.left;
             int src_h = src.bottom - src.top;
 
+            int dst_byte_width = dst_w * this->lXPitch;
+
             if (dst_w == src_w && dst_h == src_h)
             {
-                BitBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, SRCCOPY);
+                if (this->usingPBO)
+                {
+                    // Sometimes radar surface will have an odd lPitch, BitBlt won't work in those cases
+                    uint8_t *dest_base = (uint8_t*)this->surface + (dst.left * this->lXPitch) + (this->lPitch * dst.top);
+                    uint8_t *src_base = (uint8_t*)srcImpl->surface + (src.left * this->lXPitch) + (srcImpl->lPitch * src.top);
+
+                    while (dst_h-- > 0)
+                    {
+                        memcpy((void *)dest_base, (void *)src_base, dst_byte_width);
+
+                        dest_base += this->lPitch;
+                        src_base += srcImpl->lPitch;
+                    }
+                }
+                else
+                    BitBlt(this->hDC, dst.left, dst.top, dst_w, dst_h, srcImpl->hDC, src.left, src.top, SRCCOPY);
             }
             else
             {
@@ -710,7 +894,16 @@ static HRESULT __stdcall _GetBltStatus(IDirectDrawSurfaceImpl *this, DWORD dwFla
     {
         ret = IDirectDrawSurface_GetBltStatus(this->real, dwFlags);
     }
-
+    else
+    {
+        if ((this->dwCaps & DDSCAPS_PRIMARYSURFACE) && !(this->dwCaps & DDSCAPS_BACKBUFFER)
+            && this->thread)
+        {
+            EnterCriticalSection(&this->lock);
+            LeaveCriticalSection(&this->lock);
+            SetEvent(this->syncEvent);
+        }
+    }
     if (VERBOSE)
     {
         dprintf("IDirectDrawSurface::GetBltStatus(this=%p, dwFlags=%08X) -> %08X\n", this, (int)dwFlags, (int)ret);
@@ -959,6 +1152,7 @@ static HRESULT __stdcall _Unlock(IDirectDrawSurfaceImpl *this, LPVOID lpRect)
     else
     {
         LeaveCriticalSection(&this->lock);
+
     }
 
     dprintf("<-- IDirectDrawSurface::Unlock(this=%p, lpRect=%p) -> %08X\n", this, lpRect, (int)ret);

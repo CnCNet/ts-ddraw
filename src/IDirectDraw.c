@@ -43,6 +43,10 @@ IDirectDrawImpl *IDirectDrawImpl_construct()
     timeBeginPeriod(1);
     ddraw = this;
 
+    this->glInfo.glSupported = false;
+    this->glInfo.initialized = false;
+    this->glInfo.pboSupported = false;
+
     dprintf("<-- IDirectDraw::construct() -> %p\n", this);
     return this;
 }
@@ -579,12 +583,17 @@ void mouse_lock(HWND hWnd)
     ClipCursor(&rc);
     CaptureMouse = true;
     MouseIsLocked = true;
+
+    //while(ShowCursor(false) >= 0) ;
 }
 
 void mouse_unlock()
 {
     ClipCursor(NULL);
     MouseIsLocked = false;
+
+    //Uncomment to test render latency
+    //while(ShowCursor(true) < 0);
 }
 
 void center_mouse(HWND hWnd)
@@ -865,7 +874,6 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             ClientToScreen(this->hWnd, &p);
             GetClientRect(this->hWnd, &this->winRect);
             OffsetRect(&this->winRect, p.x, p.y);
-
         }
     }
 

@@ -48,6 +48,7 @@ DWORD TargetFrameLen = 16;
 LONG Renderer = RENDERER_OPENGL;
 bool AutoRenderer = true;
 int SwapInterval = 0;
+LONG PrimarySurfacePBO = 0;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {

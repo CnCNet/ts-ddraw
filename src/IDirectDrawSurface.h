@@ -53,6 +53,17 @@ struct IDirectDrawSurfaceImpl
     unsigned short *overlay;
     HDC overlayDC;
     HBITMAP overlayBitmap;
+
+    HANDLE syncEvent;
+
+    HGDIOBJ defaultBM;
+    BOOL usingPBO;
+    int pboCount;
+    GLuint *pbo;
+    int pboIndex;
+    void *systemSurface;
+    void *pboSurface;
+    GLuint texture;
 };
 
 struct IDirectDrawSurfaceImplVtbl

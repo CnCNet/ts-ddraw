@@ -27,6 +27,8 @@ void SettingsLoad()
     else
         SwapInterval = 0;
 
+    InterlockedExchange(&PrimarySurfacePBO, GetInt("PrimarySurfacePBO", PrimarySurfacePBO));
+
     if (( SingleProcAffinity = GetBool("SingleProcAffinity", true) ))
     {
         SetProcessAffinityMask(GetCurrentProcess(), 1);

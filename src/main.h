@@ -64,6 +64,7 @@ int SwapInterval;
 
 LONG Renderer;
 bool AutoRenderer;
+LONG PrimarySurfacePBO;
 
 #define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)
 

@@ -20,6 +20,9 @@
 
 #ifndef IDIRECTDRAW_H
 #define IDIRECTDRAW_H
+#include "opengl.h"
+#include <GL/gl.h>
+#include <GL/glu.h>
 
 extern bool MaintainAspectRatio;
 extern bool Windowboxing;
@@ -94,6 +97,19 @@ struct IDirectDrawImpl
         struct { int width; int height; int x; int y; } viewport;
 
     } render;
+
+    struct
+    {
+        BOOL glSupported;
+        BOOL initialized;
+        HGLRC hRC_render;
+        HGLRC hRC_main;
+        GLuint textureID;
+
+        BOOL pboSupported;
+        BOOL primaryPBO;
+    } glInfo;
+
     LONG focusGained;
 };
 
