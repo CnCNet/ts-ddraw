@@ -485,9 +485,8 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_main);
         OpenGL_Init();
 
-        int PBOCount = 1;
         this->pboCount = InterlockedExchangeAdd(&PrimarySurfacePBO, 0);
-        this->pbo = calloc(PBOCount, sizeof(GLuint));
+        this->pbo = calloc(this->pboCount, sizeof(GLuint));
         this->pboIndex = 0;
         if (glGenBuffers)
         {
@@ -631,6 +630,10 @@ static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
         if (this->overlayDC)
         {
             DeleteDC(this->overlayDC);
+        }
+        if (this->pboCount > 0)
+        {
+            free(this->pbo);
         }
         free(this);
     }
