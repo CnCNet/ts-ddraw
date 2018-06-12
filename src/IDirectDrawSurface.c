@@ -262,7 +262,18 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 }
                 else
                 {
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+                    glPixelStorei(GL_UNPACK_ROW_LENGTH, this->width);
+                    glPixelStorei(GL_UNPACK_SKIP_PIXELS, this->dd->winRect.left);
+                    glPixelStorei(GL_UNPACK_SKIP_ROWS, this->dd->winRect.top);
+
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+                
+                    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+                    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+                    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+                    
+
+                    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
                 }
 
                 LeaveCriticalSection(&this->lock);

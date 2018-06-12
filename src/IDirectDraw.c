@@ -860,6 +860,9 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             {
                 GetClientRect(this->hWnd, &this->winRect);
 
+                this->width = this->winRect.right;
+                this->height = this->winRect.bottom;
+
                 if (this->screenWidth > 0 && this->winRect.right > 0)
                 {
                     int x = (this->screenWidth / 2) - (this->winRect.right / 2);
