@@ -17,6 +17,7 @@ struct hack hacks[] =
         "user32.dll",
         {
             { "SetWindowPos", fake_SetWindowPos },
+            { "MoveWindow", fake_MoveWindow },
             { "", NULL }
         }
     },

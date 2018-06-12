@@ -558,6 +558,39 @@ BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int
     return SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
+BOOL WINAPI fake_MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint)
+{
+    if (ddraw && hWnd == ddraw->hWnd)
+    {
+        RECT rc = { 0, 0, nWidth, nHeight };
+
+        if (UnadjustWindowRectEx(&rc, GetWindowLong(hWnd, GWL_STYLE), FALSE, GetWindowLong(hWnd, GWL_EXSTYLE)))
+        {
+            ddraw->width = rc.right - rc.left;
+            ddraw->height = rc.bottom - rc.top;
+        }
+    }
+
+    return MoveWindow(hWnd, X, Y, nWidth, nHeight, bRepaint);
+}
+
+BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle)
+{
+    RECT rc;
+    SetRectEmpty(&rc);
+
+    BOOL fRc = AdjustWindowRectEx(&rc, dwStyle, fMenu, dwExStyle);
+    if (fRc) 
+    {
+        prc->left -= rc.left;
+        prc->top -= rc.top;
+        prc->right -= rc.right;
+        prc->bottom -= rc.bottom;
+    }
+
+    return fRc;
+}
+
 bool CaptureMouse = false;
 bool MouseIsLocked = false;
 void mouse_lock(HWND hWnd)
