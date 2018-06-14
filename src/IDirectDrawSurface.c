@@ -114,41 +114,43 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     if (gle != GL_NO_ERROR)
         dprintf("wglSwapIntervalEXT, %x\n", gle);
 
-    glGenTextures(1, &this->texture);
+    glGenTextures(2, this->textures);
 
     failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
     if (gle != GL_NO_ERROR)
         dprintf("glGenTextures, %x\n", gle);
 
-    glBindTexture(GL_TEXTURE_2D, this->texture);
+    for (int i = 0; i < 2; i++)
+    {
+        glBindTexture(GL_TEXTURE_2D, this->textures[i]);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
-    if ( (gle = glGetError()) != GL_NO_ERROR )
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+        if ((gle = glGetError()) != GL_NO_ERROR)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
 
-    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-    if (gle != GL_NO_ERROR)
-        dprintf("glTexImage2D, %x\n", gle);
-
-
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-
-    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-    if (gle != GL_NO_ERROR)
-        dprintf("glTexParameteri MIN, %x\n", gle);
-
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-
-    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-    if (gle != GL_NO_ERROR)
-        dprintf("glTexParameteri MAG, %x\n", gle);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glTexImage2D, %x\n", gle);
 
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    if (gle != GL_NO_ERROR)
-        dprintf("glTexParameteri MAX, %x\n", gle);
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glTexParameteri MIN, %x\n", gle);
 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glTexParameteri MAG, %x\n", gle);
+
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
+        if (gle != GL_NO_ERROR)
+            dprintf("glTexParameteri MAX, %x\n", gle);
+    }
 
     glEnable(GL_TEXTURE_2D);
 
@@ -167,11 +169,14 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     while (this->thread && ( wfso = WaitForSingleObject(this->syncEvent, TargetFrameLen) ) != WAIT_FAILED)
     {
+        static int texIndex = 0;
+        texIndex = (texIndex + 1) % 2;
+
         if (dropFrames > 0)
             dropFrames--;
         else
         {
-            switch(InterlockedExchangeAdd(&Renderer, 0))
+            switch (InterlockedExchangeAdd(&Renderer, 0))
             {
             case RENDERER_GDI:
                 EnterCriticalSection(&this->lock);
@@ -193,9 +198,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     else
                     {
                         StretchBlt(this->dd->hDC,
-                                   this->dd->render.viewport.x, this->dd->render.viewport.y,
-                                   this->dd->render.viewport.width, this->dd->render.viewport.height,
-                                   this->hDC, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, SRCCOPY);
+                            this->dd->render.viewport.x, this->dd->render.viewport.y,
+                            this->dd->render.viewport.width, this->dd->render.viewport.height,
+                            this->hDC, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, SRCCOPY);
                     }
                 }
                 else
@@ -204,7 +209,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                         this->dd->render.invalidate = TRUE;
 
                     BitBlt(this->dd->hDC, 0, 0, this->width, this->height, this->hDC,
-                           this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
+                        this->dd->winRect.left, this->dd->winRect.top, SRCCOPY);
                 }
                 LeaveCriticalSection(&this->lock);
                 break;
@@ -222,8 +227,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     {
                         // Copy the scanlines that will be behind the FPS counter to the GDI surface
                         memcpy((uint8_t*)this->systemSurface + (textRect.top * this->lPitch),
-                               (uint8_t*)this->surface + (textRect.top * this->lPitch),
-                               textRect.bottom * this->lPitch);
+                            (uint8_t*)this->surface + (textRect.top * this->lPitch),
+                            textRect.bottom * this->lPitch);
                         SelectObject(this->hDC, this->bitmap);
                     }
 
@@ -233,13 +238,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     {
                         // Copy the scanlines from the gdi surface back to pboSurface
                         memcpy((uint8_t*)this->surface + (textRect.top * this->lPitch),
-                               (uint8_t*)this->systemSurface + (textRect.top * this->lPitch),
-                               textRect.bottom * this->lPitch);
+                            (uint8_t*)this->systemSurface + (textRect.top * this->lPitch),
+                            textRect.bottom * this->lPitch);
                         SelectObject(this->hDC, this->defaultBM);
                     }
                 }
 
-                glBindTexture(GL_TEXTURE_2D, this->texture);
+                glBindTexture(GL_TEXTURE_2D, this->textures[texIndex]);
                 if (this->usingPBO)
                 {
                     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
@@ -267,35 +272,32 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     glPixelStorei(GL_UNPACK_SKIP_ROWS, this->dd->winRect.top);
 
                     glTexSubImage2D(GL_TEXTURE_2D, 0, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
-                
+
                     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
                     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
                     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-                    
-
-                    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
                 }
 
                 LeaveCriticalSection(&this->lock);
 
                 if (ShouldStretch(this))
                     glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->dd->render.viewport.height,
-                               this->dd->render.viewport.width, this->dd->render.viewport.height);
+                        this->dd->render.viewport.width, this->dd->render.viewport.height);
                 else
                     glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
 
                 glBegin(GL_TRIANGLE_FAN);
 
-                glTexCoord2f(0,0); glVertex2f(-1, 1);
-                glTexCoord2f(1,0); glVertex2f( 1, 1);
-                glTexCoord2f(1,1); glVertex2f( 1, -1);
-                glTexCoord2f(0,1); glVertex2f(-1, -1);
+                glTexCoord2f(0, 0); glVertex2f(-1, 1);
+                glTexCoord2f(1, 0); glVertex2f(1, 1);
+                glTexCoord2f(1, 1); glVertex2f(1, -1);
+                glTexCoord2f(0, 1); glVertex2f(-1, -1);
 
                 glEnd();
 
                 SwapBuffers(this->dd->hDC);
 
-                wglMakeCurrent(NULL,NULL);
+                wglMakeCurrent(NULL, NULL);
 
                 break;
 

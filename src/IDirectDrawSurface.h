@@ -63,7 +63,7 @@ struct IDirectDrawSurfaceImpl
     int pboIndex;
     void *systemSurface;
     void *pboSurface;
-    GLuint texture;
+    GLuint textures[2];
 };
 
 struct IDirectDrawSurfaceImplVtbl
