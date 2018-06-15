@@ -33,6 +33,7 @@ extern int StretchToHeight;
 void mouse_lock(HWND hWnd);
 BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 BOOL WINAPI fake_MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint);
+BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle);
 
 typedef struct IDirectDrawImplVtbl IDirectDrawImplVtbl;
 typedef struct IDirectDrawImpl IDirectDrawImpl;
