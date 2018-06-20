@@ -42,12 +42,13 @@ const GLchar *PassthroughVertShaderSrc =
 
 const GLchar *ConvFragShaderSrc =
     "out vec4 FragColor;\n"
-    "uniform usampler2D SurfaceTex;\n"
+    "uniform sampler2D SurfaceTex;\n"
     "in vec4 TEX0;\n"
     "\n"
     "void main()\n"
     "{\n"
-    "    int bytes = int(texture(SurfaceTex, TEX0.xy).r);\n"
+    "    vec4 texel = texture(SurfaceTex, TEX0.xy);\n"
+    "    int bytes = int(texel.r * 255.0 + 0.5) | int(texel.g * 255.0 + 0.5) << 8;\n"
     "    vec4 colors;\n"
     "    colors.r = float(bytes >> 11) / 31.0;\n"
     "    colors.g = float((bytes >> 5) & 63) / 63.0;\n"
@@ -170,7 +171,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         if (convProgram)
         {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, this->width, this->height, 0, texFormat = GL_RED_INTEGER, texType = GL_UNSIGNED_SHORT, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, this->width, this->height, 0, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE, NULL);
         }
         else
         {
