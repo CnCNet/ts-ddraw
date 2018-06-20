@@ -49,9 +49,9 @@ const GLchar *ConvFragShaderSrc =
     "{\n"
     "    int bytes = int(texture(SurfaceTex, TEX0.xy).r);\n"
     "    vec4 colors;\n"
-    "    colors.r = float( (( (bytes >> 11) * 527) + 23) >> 6 ) / 255.0;\n"
-    "    colors.g = float( (( ((bytes >> 5) & 63) * 259) + 33) >> 6 ) / 255.0;\n"
-    "    colors.b = float( (( (bytes & 31) * 527) + 23) >> 6 ) / 255.0;\n"
+    "    colors.r = float(bytes >> 11) / 31.0;\n"
+    "    colors.g = float((bytes >> 5) & 63) / 63.0;\n"
+    "    colors.b = float(bytes & 31) / 31.0;\n"
     "    colors.a = 0;\n"
     "    FragColor = colors;\n"
     "}\n";
