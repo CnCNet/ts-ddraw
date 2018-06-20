@@ -25,6 +25,37 @@
 #include <GL/glu.h>
 #include "glext.h"
 
+const GLchar *PassthroughVertShaderSrc =
+    "in vec4 VertexCoord;\n"
+    "in vec4 COLOR;\n"
+    "in vec4 TexCoord;\n"
+    "out vec4 COL0;\n"
+    "out vec4 TEX0;\n"
+    "uniform mat4 MVPMatrix;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    gl_Position = MVPMatrix * VertexCoord;\n"
+    "    COL0 = COLOR;\n"
+    "    TEX0.xy = TexCoord.xy;\n"
+    "}\n";
+
+const GLchar *ConvFragShaderSrc =
+    "out vec4 FragColor;\n"
+    "uniform usampler2D SurfaceTex;\n"
+    "in vec4 TEX0;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    int bytes = int(texture(SurfaceTex, TEX0.xy).r);\n"
+    "    vec4 colors;\n"
+    "    colors.r = float( (( (bytes >> 11) * 527) + 23) >> 6 ) / 255.0;\n"
+    "    colors.g = float( (( ((bytes >> 5) & 63) * 259) + 33) >> 6 ) / 255.0;\n"
+    "    colors.b = float( (( (bytes & 31) * 527) + 23) >> 6 ) / 255.0;\n"
+    "    colors.a = 0;\n"
+    "    FragColor = colors;\n"
+    "}\n";
+
 static IDirectDrawSurfaceImplVtbl Vtbl;
 
 BOOL ShouldStretch(IDirectDrawSurfaceImpl *this)
@@ -114,6 +145,19 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     if (gle != GL_NO_ERROR)
         dprintf("wglSwapIntervalEXT, %x\n", gle);
 
+
+    BOOL gotOpenglV3 = glGenFramebuffers && glBindFramebuffer && glFramebufferTexture2D && glDrawBuffers &&
+        glCheckFramebufferStatus && glUniform4f && glActiveTexture && glUniform1i &&
+        glGetAttribLocation && glGenBuffers && glBindBuffer && glBufferData && glVertexAttribPointer &&
+        glEnableVertexAttribArray && glUniform2fv && glUniformMatrix4fv && glGenVertexArrays && glBindVertexArray &&
+        glGetUniformLocation;
+
+    GLuint convProgram = 0;
+    if (gotOpenglV3)
+        convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
+
+    GLenum texFormat, texType;
+
     glGenTextures(2, this->textures);
 
     failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
@@ -124,22 +168,29 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     {
         glBindTexture(GL_TEXTURE_2D, this->textures[i]);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
-        if ((gle = glGetError()) != GL_NO_ERROR)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
+        if (convProgram)
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, this->width, this->height, 0, texFormat = GL_RED_INTEGER, texType = GL_UNSIGNED_SHORT, NULL);
+        }
+        else
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
+            if ((gle = glGetError()) != GL_NO_ERROR)
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
+        }
 
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
         if (gle != GL_NO_ERROR)
             dprintf("glTexImage2D, %x\n", gle);
 
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
         if (gle != GL_NO_ERROR)
             dprintf("glTexParameteri MIN, %x\n", gle);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
         if (gle != GL_NO_ERROR)
@@ -152,7 +203,71 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             dprintf("glTexParameteri MAX, %x\n", gle);
     }
 
-    glEnable(GL_TEXTURE_2D);
+    GLuint vao, vaoBuffers[3];
+
+    if (convProgram)
+    {
+        glUseProgram(convProgram);
+
+        GLint vertexCoordAttrLoc = glGetAttribLocation(convProgram, "VertexCoord");
+        GLint texCoordAttrLoc = glGetAttribLocation(convProgram, "TexCoord");
+
+        glGenBuffers(3, vaoBuffers);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[0]);
+        static const GLfloat vertexCoord[] = {
+            -1.0f, 1.0f,
+            1.0f, 1.0f,
+            1.0f,-1.0f,
+            -1.0f,-1.0f,
+        };
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
+        static const GLfloat texCoord[] = {
+            0.0f, 0.0f,
+            1.0f, 0.0f,
+            1.0f, 1.0f,
+            0.0f, 1.0f,
+        };
+        glBufferData(GL_ARRAY_BUFFER, sizeof(texCoord), texCoord, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[0]);
+        glVertexAttribPointer(vertexCoordAttrLoc, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+        glEnableVertexAttribArray(vertexCoordAttrLoc);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
+        glVertexAttribPointer(texCoordAttrLoc, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+        glEnableVertexAttribArray(texCoordAttrLoc);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vaoBuffers[2]);
+        static const GLushort indices[] =
+        {
+            0, 1, 2,
+            0, 2, 3,
+        };
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+        glBindVertexArray(0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+        static const float mvpMatrix[16] = {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1,
+        };
+        glUniformMatrix4fv(glGetUniformLocation(convProgram, "MVPMatrix"), 1, GL_FALSE, mvpMatrix);
+    }
+    else
+        glEnable(GL_TEXTURE_2D);
 
     failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
     if (gle != GL_NO_ERROR)
@@ -250,7 +365,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
 
                     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, 0);
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, texFormat, texType, 0);
 
                     this->pboIndex++;
                     if (this->pboIndex >= this->pboCount)
@@ -259,7 +374,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     if (this->pboCount > 1)
                     {
                         glBindBuffer(GL_PIXEL_PACK_BUFFER, this->pbo[this->pboIndex]);
-                        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, 0);
+                        glGetTexImage(GL_TEXTURE_2D, 0, texFormat, texType, 0);
                     }
                     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
                     this->surface = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
@@ -271,7 +386,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     glPixelStorei(GL_UNPACK_SKIP_PIXELS, this->dd->winRect.left);
                     glPixelStorei(GL_UNPACK_SKIP_ROWS, this->dd->winRect.top);
 
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, this->surface);
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, this->dd->winRect.left, this->dd->winRect.top, this->dd->width, this->dd->height, texFormat, texType, this->surface);
 
                     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
                     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -286,14 +401,21 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 else
                     glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
 
-                glBegin(GL_TRIANGLE_FAN);
-
-                glTexCoord2f(0, 0); glVertex2f(-1, 1);
-                glTexCoord2f(1, 0); glVertex2f(1, 1);
-                glTexCoord2f(1, 1); glVertex2f(1, -1);
-                glTexCoord2f(0, 1); glVertex2f(-1, -1);
-
-                glEnd();
+                if (convProgram)
+                {
+                    glBindVertexArray(vao);
+                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+                    glBindVertexArray(0);
+                }
+                else
+                {
+                    glBegin(GL_TRIANGLE_FAN);
+                    glTexCoord2f(0, 0); glVertex2f(-1, 1);
+                    glTexCoord2f(1, 0); glVertex2f(1, 1);
+                    glTexCoord2f(1, 1); glVertex2f(1, -1);
+                    glTexCoord2f(0, 1); glVertex2f(-1, -1);
+                    glEnd();
+                }
 
                 SwapBuffers(this->dd->hDC);
 
