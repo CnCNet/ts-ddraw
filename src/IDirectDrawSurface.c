@@ -26,6 +26,7 @@
 #include "glext.h"
 
 const GLchar *PassthroughVertShaderSrc =
+    "#version 330\n"
     "in vec4 VertexCoord;\n"
     "in vec4 COLOR;\n"
     "in vec4 TexCoord;\n"
@@ -41,6 +42,7 @@ const GLchar *PassthroughVertShaderSrc =
     "}\n";
 
 const GLchar *ConvFragShaderSrc =
+    "#version 330\n"
     "out vec4 FragColor;\n"
     "uniform sampler2D SurfaceTex;\n"
     "in vec4 TEX0;\n"
@@ -467,7 +469,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             avg_len = render_time / FRAME_SAMPLES;
             avg_fps = 1000 / avg_len;
 
-            _snprintf(fpsOglString, 254, "OpenGL\nFPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
+            _snprintf(fpsOglString, 254, "OpenGL%d\nFPS: %li\nTGT: %li\nDropped: %li", convProgram?3:1, avg_fps, TargetFPS, totalDroppedFrames);
             _snprintf(fpsGDIString, 254, "GDI\nFPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
         }
 
