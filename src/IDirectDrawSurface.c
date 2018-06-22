@@ -288,7 +288,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     while (this->thread && ( wfso = WaitForSingleObject(this->syncEvent, TargetFrameLen) ) != WAIT_FAILED)
     {
         static int texIndex = 0;
-        texIndex = (texIndex + 1) % 2;
+        if (PrimarySurface2Tex)
+            texIndex = (texIndex + 1) % 2;
 
         if (dropFrames > 0)
             dropFrames--;

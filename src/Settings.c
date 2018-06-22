@@ -22,6 +22,8 @@ void SettingsLoad()
     DrawFPS = GetInt("DrawFPS", DrawFPS);
     InterlockedExchange(&Renderer, GetRenderer("Renderer", "auto", &AutoRenderer));
 
+    PrimarySurface2Tex = GetBool("PrimarySurface2Tex", PrimarySurface2Tex);
+
     if (GetBool("VSync", false))
         SwapInterval = 1;
     else
