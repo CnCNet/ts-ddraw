@@ -13,6 +13,7 @@ FILES = src/main.c \
         src/IDirectDrawClipper.c \
         src/IDirectDrawSurface.c \
         src/hook.c \
+        src/render.c \
         src/Settings.c \
         src/opengl.c
 

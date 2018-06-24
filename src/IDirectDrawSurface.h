@@ -55,6 +55,7 @@ struct IDirectDrawSurfaceImpl
     HBITMAP overlayBitmap;
 
     HANDLE syncEvent;
+    HANDLE pSurfaceReady;
 
     HGDIOBJ defaultBM;
     BOOL usingPBO;
