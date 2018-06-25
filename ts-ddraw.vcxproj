@@ -11,7 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\counter.c" />
     <ClCompile Include="src\opengl.c" />
+    <ClCompile Include="src\render.c" />
     <ClCompile Include="src\Settings.c" />
     <ClCompile Include="src\hook.c" />
     <ClCompile Include="src\IDirectDraw.c" />

@@ -36,6 +36,12 @@
     <ClCompile Include="src\opengl.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\render.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\counter.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\scale_pattern.h">
