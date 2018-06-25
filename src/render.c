@@ -11,7 +11,7 @@
 #include "glext.h"
 
 const GLchar *PassthroughVertShaderSrc =
-    "#version 330\n"
+    "#version 130\n"
     "in vec4 VertexCoord;\n"
     "in vec4 COLOR;\n"
     "in vec4 TexCoord;\n"
@@ -27,7 +27,7 @@ const GLchar *PassthroughVertShaderSrc =
     "}\n";
 
 const GLchar *ConvFragShaderSrc =
-    "#version 330\n"
+    "#version 130\n"
     "out vec4 FragColor;\n"
     "uniform sampler2D SurfaceTex;\n"
     "in vec4 TEX0;\n"
