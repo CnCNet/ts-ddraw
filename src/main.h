@@ -53,8 +53,8 @@ BOOL IsWindowsXp();
 
 bool GameHandlesClose;
 int DrawFPS;
-DWORD TargetFPS;
-DWORD TargetFrameLen;
+double TargetFPS;
+double TargetFrameLen;
 bool SingleProcAffinity;
 int SwapInterval;
 

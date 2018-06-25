@@ -43,8 +43,8 @@ int DrawFPS = 1;
 int DrawFPS = 0;
 #endif
 
-DWORD TargetFPS = 62;
-DWORD TargetFrameLen = 16;
+double TargetFPS = 60.0;
+double TargetFrameLen = 1000.0 / 60.0;
 LONG Renderer = RENDERER_OPENGL;
 bool AutoRenderer = true;
 int SwapInterval = 0;
@@ -85,8 +85,8 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         int tfps;
         if (sscanf(buf, "%i", &tfps) && tfps > 0)
         {
-            TargetFPS = (DWORD)tfps;
-            TargetFrameLen = 1000 / TargetFPS;
+            TargetFPS = (double)(DWORD)tfps;
+            TargetFrameLen = 1000.0 / TargetFPS;
         }
     }
 

@@ -3,6 +3,7 @@
 #include "IDirectDrawSurface.h"
 #include <stdint.h>
 #include <stdio.h>
+#include "counter.h"
 
 #include "opengl.h"
 #include <GL/gl.h>
@@ -345,49 +346,35 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     Sleep(500);
 
-    DWORD tick_start = 0;
-    DWORD tick_end = 0;
-    TargetFrameLen = 1000 / TargetFPS;
-    DWORD startTargetFPS = TargetFPS;
-    DWORD tick_len = 0;
-    DWORD showFPS = 0;
+    double tick_time = 0.0;
+    TargetFrameLen = 1000.0 / TargetFPS;
+    double startTargetFPS = TargetFPS;
 
-    DWORD avg_len = TargetFrameLen;
-    DWORD recent_frames[FRAME_SAMPLES] = { 16 };
-    DWORD render_time = 0;
-    int dropFrames = 0;
-    DWORD totalDroppedFrames = 0;
+    double avg_len = TargetFrameLen;
+    double recent_frames[FRAME_SAMPLES] = { 16 };
+    double render_time = 0.0;
+    double best_time = 0.0;
     int rIndex = 0;
 
     RECT textRect = (RECT){0,0,0,0};
-    char fpsOglString[256] = "OpenGL\nFPS: NA\nTGT: NA\nDropped: NA";
-    char fpsGDIString[256] = "GDI\nFPS: NA\nTGT: NA\nDropped: NA";
-    DWORD avg_fps = 0;
+    char fpsOglString[256] = "OpenGL\nFPS: NA\nTGT: NA\n";
+    char fpsGDIString[256] = "GDI\nFPS: NA\nTGT: NA\n";
+    double avg_fps = 0;
 
-#ifdef _DEBUG
-    double frame_time = 0, real_time = timeGetTime();
-    int frames = 0;
-#endif
+    CounterStart();
 
-    tick_start = timeGetTime();
-
-    DWORD wfso;
-
-    while (this->thread && ( wfso = WaitForSingleObject(this->syncEvent, TargetFrameLen) ) != WAIT_FAILED)
+    while (this->thread)
     {
         static int texIndex = 0;
         if (PrimarySurface2Tex)
             texIndex = (texIndex + 1) % 2;
 
-        if (dropFrames > 0)
-            dropFrames--;
-        else
         {
             switch (InterlockedExchangeAdd(&Renderer, 0))
             {
             case RENDERER_GDI:
                 EnterCriticalSection(&this->lock);
-                if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
+                if (DrawFPS)
                 {
                     textRect.left = this->dd->winRect.left;
                     textRect.top = this->dd->winRect.top;
@@ -424,8 +411,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             case RENDERER_OPENGL:
 
                 wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_render);
+
                 EnterCriticalSection(&this->lock);
-                if (DrawFPS && (showFPS > tick_start || DrawFPS == 1))
+                if (DrawFPS)
                 {
                     textRect.left = this->dd->winRect.left;
                     textRect.top = this->dd->winRect.top;
@@ -470,7 +458,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     }
                     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
                     this->surface = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
-
                 }
                 else
                 {
@@ -510,6 +497,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 }
 
                 SwapBuffers(this->dd->hDC);
+                glFinish();
 
                 wglMakeCurrent(NULL, NULL);
 
@@ -521,68 +509,48 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
 
             EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
-
-            dropFrames = -1;
         }
 
-        tick_end = timeGetTime();
+        tick_time = CounterGet();
 
-#ifdef _DEBUG
-        frame_time += (tick_end - tick_start);
-        frames++;
-
-        if (frames >= TargetFPS)
+        if (DrawFPS)
         {
-            printf("Timed FPS: %.2f\n", 1000.0f / (frame_time / frames));
-            printf("Real  FPS: %.2f\n", 1000.0f / ((tick_end - real_time) / frames));
-            frame_time = frames = 0;
-            real_time = tick_end;
-        }
-#endif
-
-        tick_len = tick_end - tick_start;
-
-        if (dropFrames == -1 && DrawFPS)
-        {
-            recent_frames[rIndex++] = tick_len;
+            recent_frames[rIndex++] = tick_time;
 
             if (rIndex >= FRAME_SAMPLES)
                 rIndex = 0;
 
-            render_time = 0;
+            render_time = 0.0;
+            best_time = 0.0;
             for (int i = 0; i < FRAME_SAMPLES; ++i)
             {
                 render_time += recent_frames[i] < TargetFrameLen ? TargetFrameLen : recent_frames[i];
+                best_time += recent_frames[i];
             }
 
             avg_len = render_time / FRAME_SAMPLES;
-            avg_fps = 1000 / avg_len;
+            avg_fps = 1000.0 / avg_len;
 
-            _snprintf(fpsOglString, 254, "OpenGL%d\nFPS: %li\nTGT: %li\nDropped: %li", convProgram?3:1, avg_fps, TargetFPS, totalDroppedFrames);
-            _snprintf(fpsGDIString, 254, "GDI\nFPS: %li\nTGT: %li\nDropped: %li", avg_fps, TargetFPS, totalDroppedFrames);
+            _snprintf(fpsOglString, 254, "OpenGL%d\nFPS: %3.0f\nTGT: %3.0f\nRender Time: %2.3f ms", convProgram?3:1, avg_fps, TargetFPS, best_time / FRAME_SAMPLES);
+            _snprintf(fpsGDIString, 254, "GDI\nFPS: %3.0f\nTGT: %3.0f\nRender Time: %2.3f ms", avg_fps, TargetFPS, best_time / FRAME_SAMPLES);
         }
 
         if (startTargetFPS != TargetFPS)
         {
             // TargetFPS was changed externally
-            TargetFrameLen = 1000 / TargetFPS;
+            TargetFrameLen = 1000.0 / TargetFPS;
             startTargetFPS = TargetFPS;
         }
 
-        if (tick_len < TargetFrameLen)
+        if (tick_time < TargetFrameLen)
         {
-            Sleep(TargetFrameLen - 4);//TargetFrameLen - tick_len);
-        }
-        else if (tick_len > TargetFrameLen)
-        {/*
-            dropFrames = (tick_len * 2) / TargetFrameLen;
+            int sleep = (int)(TargetFrameLen - tick_time);
+            Sleep(sleep);
 
-            if (dropFrames > TargetFPS / 30)
-            {
-                showFPS = tick_end + tick_len + 2000;
-            }
-            totalDroppedFrames += dropFrames;*/
+            // Finish sub-millisecond sleep
+            while (CounterGet() < TargetFrameLen);
         }
+
         if (InterlockedCompareExchange(&this->dd->focusGained, false, true))
         {
             switch (InterlockedExchangeAdd(&Renderer, 0))
@@ -600,8 +568,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             default: break;
             }
         }
-        tick_start = timeGetTime();
-        ResetEvent(this->syncEvent);
+        CounterStart();
     }
 
     return 0;

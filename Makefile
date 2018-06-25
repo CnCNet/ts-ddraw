@@ -15,7 +15,8 @@ FILES = src/main.c \
         src/hook.c \
         src/render.c \
         src/Settings.c \
-        src/opengl.c
+        src/opengl.c \
+        src/counter.c
 
 all: debug
 

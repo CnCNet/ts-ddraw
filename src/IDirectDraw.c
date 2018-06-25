@@ -580,7 +580,7 @@ BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle
     SetRectEmpty(&rc);
 
     BOOL fRc = AdjustWindowRectEx(&rc, dwStyle, fMenu, dwExStyle);
-    if (fRc) 
+    if (fRc)
     {
         prc->left -= rc.left;
         prc->top -= rc.top;
@@ -617,16 +617,16 @@ void mouse_lock(HWND hWnd)
     CaptureMouse = true;
     MouseIsLocked = true;
 
-    //while(ShowCursor(false) >= 0) ;
+    while(ShowCursor(false) >= 0) ;
 }
 
-void mouse_unlock()
+void mouse_unlock(BOOL showCursor)
 {
     ClipCursor(NULL);
     MouseIsLocked = false;
 
-    //Uncomment to test render latency
-    //while(ShowCursor(true) < 0);
+    if (showCursor)
+        while(ShowCursor(true) < 0);
 }
 
 void center_mouse(HWND hWnd)
@@ -651,7 +651,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     IDirectDrawImpl *this = ddraw;
 
-    static DWORD rememberFPS = -1;
+    static double rememberFPS = -1;
 
     switch(uMsg)
     {
@@ -662,7 +662,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (LOWORD(wParam) == WM_DESTROY)
                 redrawCount = 2;
             else if (LOWORD(wParam) == WM_CREATE)
-                mouse_unlock();
+                mouse_unlock(false);
             break;
         }
         case WM_PAINT:
@@ -696,8 +696,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             else if (wParam == WA_INACTIVE)
             {
                 rememberFPS = TargetFPS;
-                TargetFPS = 10;
-                mouse_unlock();
+                TargetFPS = 10.0;
+                mouse_unlock(false);
             }
 
             if (this->dwFlags & DDSCL_FULLSCREEN)
@@ -769,7 +769,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if(GetAsyncKeyState(VK_CONTROL) & 0x8000 && GetAsyncKeyState(VK_TAB) & 0x8000)
                 {
-                    mouse_unlock();
+                    mouse_unlock(false);
                     return 0;
                 }
             }
@@ -777,7 +777,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (CaptureMouse)
                 {
-                    mouse_unlock();
+                    mouse_unlock(true);
                     CaptureMouse = false;
                 }
                 else
@@ -792,14 +792,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if ((wParam == VK_PRIOR) && (GetAsyncKeyState(VK_RCONTROL) & 0x8000))
             {
-                TargetFPS = TargetFPS + 20;
-                TargetFrameLen = 1000.0f / TargetFPS;
+                TargetFPS = TargetFPS + 20.0;
+                TargetFrameLen = 1000.0 / TargetFPS;
             }
 
             if ((wParam == VK_NEXT) && (GetAsyncKeyState(VK_RCONTROL) & 0x8000))
             {
-                TargetFPS = TargetFPS > 20 ? TargetFPS - 20 : TargetFPS;
-                TargetFrameLen = 1000.0f / TargetFPS;
+                TargetFPS = TargetFPS > 20.0 ? TargetFPS - 20.0 : TargetFPS;
+                TargetFrameLen = 1000.0 / TargetFPS;
             }
 
             if ((wParam == VK_END) && (GetAsyncKeyState(VK_RCONTROL) & 0x8000) && AutoRenderer == true)
@@ -812,7 +812,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         case WM_MOUSELEAVE:
         case WM_CLOSE:
-            mouse_unlock();
+            mouse_unlock(false);
             return 0;
             break;
     }
