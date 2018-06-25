@@ -763,12 +763,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
 
-        /* Prevent freezing on Alt or F10 in windowed mode */
-        case WM_SYSKEYDOWN:
-            if (!(this->dwFlags & DDSCL_FULLSCREEN) && wParam != VK_F4)
-                return 0;
-            break;
-
         case WM_KEYDOWN:
 
             if(wParam == VK_CONTROL || wParam == VK_TAB)
