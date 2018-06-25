@@ -652,6 +652,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     IDirectDrawImpl *this = ddraw;
 
     static double rememberFPS = -1;
+    static DWORD rememberDrawFPS = 0;
 
     switch(uMsg)
     {
@@ -687,7 +688,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
             {
                 if (rememberFPS != -1)
+                {
                     TargetFPS = rememberFPS;
+                    DrawFPS = rememberDrawFPS;
+                }
 
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
                 this->render.invalidate = TRUE;
@@ -696,7 +700,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             else if (wParam == WA_INACTIVE)
             {
                 rememberFPS = TargetFPS;
+                rememberDrawFPS = DrawFPS;
                 TargetFPS = 10.0;
+                DrawFPS = 0;
                 mouse_unlock(false);
             }
 

@@ -24,6 +24,9 @@ void SettingsLoad()
 
     PrimarySurface2Tex = GetBool("PrimarySurface2Tex", PrimarySurface2Tex);
 
+    TargetFPS = (double)GetInt("TargetFPS", (int)TargetFPS);
+    TargetFrameLen = 1000.0 / TargetFPS;
+
     if (GetBool("VSync", false))
         SwapInterval = 1;
     else
