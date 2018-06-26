@@ -489,20 +489,17 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 
         if (!IsWindowsXp())
         {
-            PIXELFORMATDESCRIPTOR pfd;
-
-            memset(&pfd, 0, sizeof(pfd));
-            pfd.nSize = sizeof(pfd);
-            pfd.nVersion = 1;
+            this->pfd.nSize = sizeof(this->pfd);
+            this->pfd.nVersion = 1;
 
             if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
-                pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
+                this->pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
             else
-                pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-            pfd.iPixelType = PFD_TYPE_RGBA;
-            pfd.cColorBits = this->bpp;
-            pfd.iLayerType = PFD_MAIN_PLANE;
-            if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
+                this->pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+            this->pfd.iPixelType = PFD_TYPE_RGBA;
+            this->pfd.cColorBits = this->bpp;
+            this->pfd.iLayerType = PFD_MAIN_PLANE;
+            if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &this->pfd), &this->pfd))
             {
                 dprintf("SetPixelFormat failed!\n");
                 //ret = DDERR_UNSUPPORTED;
@@ -806,7 +803,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (InterlockedCompareExchange(&Renderer, RENDERER_GDI, RENDERER_OPENGL) == RENDERER_GDI)
                     InterlockedExchange(&Renderer, RENDERER_OPENGL);
-                InterlockedExchange(&this->dd->focusGained, true);
+
+                if (this->dd->dwFlags & DDSCL_FULLSCREEN)
+                {
+                    SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_INACTIVE, 0);
+                    Sleep(50);
+                    ShowWindow(this->dd->hWnd, SW_RESTORE);
+                }
             }
             break;
 
@@ -849,20 +852,17 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
 
             if (!IsWindowsXp())
             {
-                PIXELFORMATDESCRIPTOR pfd;
-
-                memset(&pfd, 0, sizeof(pfd));
-                pfd.nSize = sizeof(pfd);
-                pfd.nVersion = 1;
+                this->pfd.nSize = sizeof(this->pfd);
+                this->pfd.nVersion = 1;
 
                 if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
-                    pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
+                    this->pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
                 else
-                    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-                pfd.iPixelType = PFD_TYPE_RGBA;
-                pfd.cColorBits = this->bpp;
-                pfd.iLayerType = PFD_MAIN_PLANE;
-                if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &pfd), &pfd))
+                    this->pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+                this->pfd.iPixelType = PFD_TYPE_RGBA;
+                this->pfd.cColorBits = this->bpp;
+                this->pfd.iLayerType = PFD_MAIN_PLANE;
+                if (!SetPixelFormat(this->hDC, ChoosePixelFormat(this->hDC, &this->pfd), &this->pfd))
                 {
                     dprintf("SetPixelFormat failed!\n");
                     ret = DDERR_UNSUPPORTED;

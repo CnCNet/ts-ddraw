@@ -88,254 +88,259 @@ BOOL ShouldStretch(IDirectDrawSurfaceImpl *this)
 
 DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 {
+    GdiSetBatchLimit(1);
 
     // Begin OpenGL Setup
-    this->dd->glInfo.glSupported = true;
-
-    GLenum gle = GL_NO_ERROR;
-
-    this->dd->glInfo.hRC_main = wglCreateContext(this->dd->hDC);
-    this->dd->glInfo.hRC_render = wglCreateContext(this->dd->hDC);
-    wglShareLists(this->dd->glInfo.hRC_render, this->dd->glInfo.hRC_main);
-
-    wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_render);
-    OpenGL_Init();
-
-    this->pboCount = InterlockedExchangeAdd(&PrimarySurfacePBO, 0);
-    this->pbo = calloc(this->pboCount, sizeof(GLuint));
-    this->pboIndex = 0;
     bool failToGDI = false;
-
-    this->dd->glInfo.initialized = true;
-
-    if (wglSwapIntervalEXT)
-    {
-        wglSwapIntervalEXT(SwapInterval);
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-    }
-    if (gle != GL_NO_ERROR)
-        dprintf("wglSwapIntervalEXT, %x\n", gle);
-
-
-    BOOL gotOpenglV3 = glGenFramebuffers && glBindFramebuffer && glFramebufferTexture2D && glDrawBuffers &&
-        glCheckFramebufferStatus && glUniform4f && glActiveTexture && glUniform1i &&
-        glGetAttribLocation && glGenBuffers && glBindBuffer && glBufferData && glVertexAttribPointer &&
-        glEnableVertexAttribArray && glUniform2fv && glUniformMatrix4fv && glGenVertexArrays && glBindVertexArray &&
-        glGetUniformLocation;
-
+    BOOL gotOpenglV3;
     GLuint convProgram = 0;
-    if (gotOpenglV3)
-        convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
+    GLenum texFormat = GL_RGB, texType = GL_RGB;
+    GLuint vao, vaoBuffers[3];
+    GLint vertexCoordAttrLoc, texCoordAttrLoc;
 
-    GLenum texFormat, texType;
-
-    glGenTextures(2, &this->textures[0]);
-
-    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-    if (gle != GL_NO_ERROR)
-        dprintf("glGenTextures, %x\n", gle);
-
-    for (int i = 0; i < 2; i++)
+    if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
     {
-        glBindTexture(GL_TEXTURE_2D, this->textures[i]);
+        this->dd->glInfo.glSupported = true;
+
+        GLenum gle = GL_NO_ERROR;
+
+        this->dd->glInfo.hRC_main = wglCreateContext(this->dd->hDC);
+        this->dd->glInfo.hRC_render = wglCreateContext(this->dd->hDC);
+        wglShareLists(this->dd->glInfo.hRC_render, this->dd->glInfo.hRC_main);
+
+        wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_render);
+        OpenGL_Init();
+
+        this->pboCount = InterlockedExchangeAdd(&PrimarySurfacePBO, 0);
+        this->pbo = calloc(this->pboCount, sizeof(GLuint));
+        this->pboIndex = 0;
+
+        this->dd->glInfo.initialized = true;
+
+        if (wglSwapIntervalEXT)
+        {
+            wglSwapIntervalEXT(SwapInterval);
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        }
+        if (gle != GL_NO_ERROR)
+            dprintf("wglSwapIntervalEXT, %x\n", gle);
+
+
+        gotOpenglV3 = glGenFramebuffers && glBindFramebuffer && glFramebufferTexture2D && glDrawBuffers &&
+            glCheckFramebufferStatus && glUniform4f && glActiveTexture && glUniform1i &&
+            glGetAttribLocation && glGenBuffers && glBindBuffer && glBufferData && glVertexAttribPointer &&
+            glEnableVertexAttribArray && glUniform2fv && glUniformMatrix4fv && glGenVertexArrays && glBindVertexArray &&
+            glGetUniformLocation;
+
+        if (gotOpenglV3)
+            convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
+
+        glGenTextures(2, &this->textures[0]);
 
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
         if (gle != GL_NO_ERROR)
-            dprintf("glBindTexture, %x\n", gle);
+            dprintf("glGenTextures, %x\n", gle);
+
+        for (int i = 0; i < 2; i++)
+        {
+            glBindTexture(GL_TEXTURE_2D, this->textures[i]);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glBindTexture, %x\n", gle);
+
+            if (convProgram)
+            {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, this->width, this->height, 0, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE, NULL);
+                if (glGetError() != GL_NO_ERROR)
+                {
+                    convProgram = 0;
+                    goto no_shader;
+                }
+            }
+            else
+            {
+            no_shader:
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
+                if ((gle = glGetError()) != GL_NO_ERROR)
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
+            }
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexImage2D i = %d, %x\n", i, gle);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexParameteri MIN, %x\n", gle);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexParameteri MAG, %x\n", gle);
+
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexParameteri MAX, %x\n", gle);
+        }
 
         if (convProgram)
         {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, this->width, this->height, 0, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE, NULL);
-           if (glGetError() != GL_NO_ERROR)
-           {
-               convProgram = 0;
-               goto no_shader;
-           }
+            glUseProgram(convProgram);
+
+            vertexCoordAttrLoc = glGetAttribLocation(convProgram, "VertexCoord");
+            texCoordAttrLoc = glGetAttribLocation(convProgram, "TexCoord");
+
+            glGenBuffers(3, vaoBuffers);
+
+            glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[0]);
+            static const GLfloat vertexCoord[] = {
+                -1.0f, 1.0f,
+                1.0f, 1.0f,
+                1.0f,-1.0f,
+                -1.0f,-1.0f,
+            };
+            glBufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
+            static const GLfloat texCoord[] = {
+                0.0f, 0.0f,
+                1.0f, 0.0f,
+                1.0f, 1.0f,
+                0.0f, 1.0f,
+            };
+            glBufferData(GL_ARRAY_BUFFER, sizeof(texCoord), texCoord, GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            glGenVertexArrays(1, &vao);
+            glBindVertexArray(vao);
+
+            glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[0]);
+            glVertexAttribPointer(vertexCoordAttrLoc, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+            glEnableVertexAttribArray(vertexCoordAttrLoc);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
+            glVertexAttribPointer(texCoordAttrLoc, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+            glEnableVertexAttribArray(texCoordAttrLoc);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vaoBuffers[2]);
+            static const GLushort indices[] = {
+                0, 1, 2,
+                0, 2, 3,
+            };
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+            glBindVertexArray(0);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+            static const float mvpMatrix[16] = {
+                1,0,0,0,
+                0,1,0,0,
+                0,0,1,0,
+                0,0,0,1,
+            };
+            glUniformMatrix4fv(glGetUniformLocation(convProgram, "MVPMatrix"), 1, GL_FALSE, mvpMatrix);
+        }
+        else
+            glEnable(GL_TEXTURE_2D);
+
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glEnable, %x\n", gle);
+
+
+        if (glGenBuffers)
+        {
+            glGenBuffers(this->pboCount, this->pbo);
+
+            gle = glGetError();
+            if (gle != GL_NO_ERROR)
+            {
+                dprintf("glGenBuffers, %x\n", gle);
+                goto no_pbo;
+            }
+        }
+
+        if (glBindBuffer && gle == GL_NO_ERROR  && this->pboCount)
+        {
+
+            for (int i = 0; i < this->pboCount; ++i)
+            {
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[i]);
+                gle = glGetError();
+                if (gle != GL_NO_ERROR)
+                {
+                    dprintf("glBindBuffer %i, %x\n", i, gle);
+                    goto no_pbo;
+                }
+
+                glBufferData(GL_PIXEL_UNPACK_BUFFER, this->height * this->lPitch, 0, GL_STREAM_DRAW);
+                gle = glGetError();
+                if (gle != GL_NO_ERROR)
+                {
+                    dprintf("glBufferData, %x\n", gle);
+                    goto no_pbo;
+                }
+            }
+
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[0]);
+
+            if (glMapBuffer)
+            {
+                this->pboSurface = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
+
+                gle = glGetError();
+                if (gle != GL_NO_ERROR)
+                {
+                    dprintf("glMapBuffer, %x\n", gle);
+                    goto no_pbo;
+                }
+
+                if (InterlockedExchangeAdd(&PrimarySurfacePBO, 0) && InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+                {
+                    this->usingPBO = true;
+
+                    this->surface = this->pboSurface;
+                    SelectObject(this->hDC, this->defaultBM);
+                }
+
+            }
+            else
+            {
+                goto no_pbo;
+            }
         }
         else
         {
-        no_shader:
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
-            if ((gle = glGetError()) != GL_NO_ERROR)
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
+        no_pbo:
+            this->dd->glInfo.pboSupported = false;
+            this->usingPBO = false;
+            this->pboSurface = NULL;
+            this->surface = this->systemSurface;
         }
-
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glTexImage2D i = %d, %x\n", i, gle);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glTexParameteri MIN, %x\n", gle);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glTexParameteri MAG, %x\n", gle);
-
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-
-        if (gle != GL_NO_ERROR)
-            dprintf("glTexParameteri MAX, %x\n", gle);
-    }
-
-    GLuint vao, vaoBuffers[3];
-
-    if (convProgram)
-    {
-        glUseProgram(convProgram);
-
-        GLint vertexCoordAttrLoc = glGetAttribLocation(convProgram, "VertexCoord");
-        GLint texCoordAttrLoc = glGetAttribLocation(convProgram, "TexCoord");
-
-        glGenBuffers(3, vaoBuffers);
-
-        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[0]);
-        static const GLfloat vertexCoord[] = {
-            -1.0f, 1.0f,
-            1.0f, 1.0f,
-            1.0f,-1.0f,
-            -1.0f,-1.0f,
-        };
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
-        static const GLfloat texCoord[] = {
-            0.0f, 0.0f,
-            1.0f, 0.0f,
-            1.0f, 1.0f,
-            0.0f, 1.0f,
-        };
-        glBufferData(GL_ARRAY_BUFFER, sizeof(texCoord), texCoord, GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-
-        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[0]);
-        glVertexAttribPointer(vertexCoordAttrLoc, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-        glEnableVertexAttribArray(vertexCoordAttrLoc);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
-        glVertexAttribPointer(texCoordAttrLoc, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-        glEnableVertexAttribArray(texCoordAttrLoc);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vaoBuffers[2]);
-        static const GLushort indices[] =
-        {
-            0, 1, 2,
-            0, 2, 3,
-        };
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-        glBindVertexArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-        static const float mvpMatrix[16] = {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0,
-            0,0,0,1,
-        };
-        glUniformMatrix4fv(glGetUniformLocation(convProgram, "MVPMatrix"), 1, GL_FALSE, mvpMatrix);
-    }
-    else
-        glEnable(GL_TEXTURE_2D);
-
-    failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-    if (gle != GL_NO_ERROR)
-        dprintf("glEnable, %x\n", gle);
-
-
-    if (glGenBuffers)
-    {
-        glGenBuffers(this->pboCount, this->pbo);
-
-        gle = glGetError();
-        if (gle != GL_NO_ERROR)
-        {
-            dprintf("glGenBuffers, %x\n", gle);
-            goto no_pbo;
-        }
-    }
-
-    if (glBindBuffer && gle == GL_NO_ERROR  && this->pboCount)
-    {
-        this->systemSurface = this->surface;
-
-        for (int i = 0; i < this->pboCount; ++i)
-        {
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[i]);
-            gle = glGetError();
-            if (gle != GL_NO_ERROR)
-            {
-                dprintf("glBindBuffer %i, %x\n", i, gle);
-                goto no_pbo;
-            }
-
-            glBufferData(GL_PIXEL_UNPACK_BUFFER, this->height * this->lPitch, 0, GL_STREAM_DRAW);
-            gle = glGetError();
-            if (gle != GL_NO_ERROR)
-            {
-                dprintf("glBufferData, %x\n", gle);
-                goto no_pbo;
-            }
-        }
-
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[0]);
-
-        if (glMapBuffer)
-        {
-            this->pboSurface = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
-
-            gle = glGetError();
-            if (gle != GL_NO_ERROR)
-            {
-                dprintf("glMapBuffer, %x\n", gle);
-                goto no_pbo;
-            }
-
-            if (InterlockedExchangeAdd(&PrimarySurfacePBO, 0) && InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
-            {
-                this->usingPBO = true;
-
-                this->surface = this->pboSurface;
-                SelectObject(this->hDC, this->defaultBM);
-            }
-
-        }
-        else
-        {
-            goto no_pbo;
-        }
-    }
-    else
-    {
-    no_pbo:
-        this->dd->glInfo.pboSupported = false;
-        this->usingPBO = false;
-        this->pboSurface = NULL;
     }
 
     if (failToGDI)
     {
         InterlockedExchange(&Renderer, RENDERER_GDI);
+
+        this->surface = this->systemSurface;
         this->dd->glInfo.glSupported = false;
         if (this->usingPBO)
         {
-            this->surface = this->systemSurface;
             this->usingPBO = false;
             this->pboSurface = NULL;
+            SelectObject(this->hDC, this->bitmap);
         }
         wglMakeCurrent(NULL, NULL);
-        SelectObject(this->hDC, this->bitmap);
     }
 
     SetEvent(this->pSurfaceReady);
@@ -346,12 +351,35 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     Sleep(500);
 
+    if (failToGDI)
+    {
+        if (this->dd->dwFlags & DDSCL_FULLSCREEN)
+        {
+            SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_INACTIVE, 0);
+            Sleep(50);
+            ShowWindow(this->dd->hWnd, SW_RESTORE);
+        }
+    }
+
+    if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL && SwapInterval > 0)
+    {
+        DEVMODE lpDevMode;
+        memset(&lpDevMode, 0, sizeof(DEVMODE));
+        lpDevMode.dmSize = sizeof(DEVMODE);
+        lpDevMode.dmDriverExtra = 0;
+
+        if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &lpDevMode))
+        {
+            TargetFPS = (double)lpDevMode.dmDisplayFrequency;
+        }
+    }
+
     double tick_time = 0.0;
     TargetFrameLen = 1000.0 / TargetFPS;
     double startTargetFPS = TargetFPS;
 
     double avg_len = TargetFrameLen;
-    double recent_frames[FRAME_SAMPLES] = { 16 };
+    double recent_frames[FRAME_SAMPLES] = { -1.0 };
     double render_time = 0.0;
     double best_time = 0.0;
     int rIndex = 0;
@@ -360,6 +388,14 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     char fpsOglString[256] = "OpenGL\nFPS: NA\nTGT: NA\n";
     char fpsGDIString[256] = "GDI\nFPS: NA\nTGT: NA\n";
     double avg_fps = 0;
+
+    // Vsync calculator variables
+    double floor = 0;
+    double ceiling = TargetFrameLen + 1;
+    bool descending = true;
+    double sleep = TargetFrameLen;
+    double previous_best = TargetFrameLen * 2;
+    double best_sleep = 0;
 
     CounterStart();
 
@@ -496,6 +532,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     glEnd();
                 }
 
+
                 SwapBuffers(this->dd->hDC);
                 glFinish();
 
@@ -513,26 +550,32 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         tick_time = CounterGet();
 
+        recent_frames[rIndex++] = tick_time;
+
+        if (rIndex >= FRAME_SAMPLES)
+            rIndex = 0;
+
+        render_time = 0.0;
+        best_time = 0.0;
+        int bCount = 0;
+        for (int i = 0; i < FRAME_SAMPLES; ++i)
+        {
+            render_time += recent_frames[i] < TargetFrameLen ? TargetFrameLen : recent_frames[i];
+            if (recent_frames[i] > 0)
+            {
+                best_time += recent_frames[i];
+                bCount++;
+            }
+        }
+
+        avg_fps = 1000.0 / (render_time / FRAME_SAMPLES);
+
+        avg_len = best_time / bCount;
+
         if (DrawFPS)
         {
-            recent_frames[rIndex++] = tick_time;
-
-            if (rIndex >= FRAME_SAMPLES)
-                rIndex = 0;
-
-            render_time = 0.0;
-            best_time = 0.0;
-            for (int i = 0; i < FRAME_SAMPLES; ++i)
-            {
-                render_time += recent_frames[i] < TargetFrameLen ? TargetFrameLen : recent_frames[i];
-                best_time += recent_frames[i];
-            }
-
-            avg_len = render_time / FRAME_SAMPLES;
-            avg_fps = 1000.0 / avg_len;
-
-            _snprintf(fpsOglString, 254, "OpenGL%d\nFPS: %3.0f\nTGT: %3.0f\nRender Time: %2.3f ms", convProgram?3:1, avg_fps, TargetFPS, best_time / FRAME_SAMPLES);
-            _snprintf(fpsGDIString, 254, "GDI\nFPS: %3.0f\nTGT: %3.0f\nRender Time: %2.3f ms", avg_fps, TargetFPS, best_time / FRAME_SAMPLES);
+            _snprintf(fpsOglString, 254, "OpenGL%d\nFPS: %3.0f\nTGT: %3.0f\nRender Time: %2.3f ms", convProgram?3:1, avg_fps, TargetFPS, avg_len);
+            _snprintf(fpsGDIString, 254, "GDI\nFPS: %3.0f\nTGT: %3.0f\nRender Time: %2.3f ms", avg_fps, TargetFPS, avg_len);
         }
 
         if (startTargetFPS != TargetFPS)
@@ -542,13 +585,47 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             startTargetFPS = TargetFPS;
         }
 
-        if (tick_time < TargetFrameLen)
+        tick_time = CounterGet();
+        if (SwapInterval < 1)
         {
-            int sleep = (int)(TargetFrameLen - tick_time);
-            Sleep(sleep);
+            if (tick_time < TargetFrameLen)
+            {
+                int sleep = (int)(TargetFrameLen - tick_time);
+                Sleep(sleep);
 
-            // Finish sub-millisecond sleep
-            while (CounterGet() < TargetFrameLen);
+                // Finish sub-millisecond sleep
+                while (CounterGet() < TargetFrameLen);
+            }
+        }
+        else if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+        {
+            // Calculate optimal sleep time for vsync mode.
+            if (bCount == FRAME_SAMPLES  && rIndex == FRAME_SAMPLES - 1)
+            {
+                if (avg_len < previous_best)
+                {
+                    previous_best = avg_len;
+                    best_sleep = sleep;
+                }
+                else
+                {
+                    descending = sleep > best_sleep;
+                    if (descending)
+                        ceiling = (ceiling + sleep) / 2;
+                    else
+                        floor = (floor - 0.5 + sleep) / 2;
+                }
+                if (descending)
+                    sleep = (sleep + floor)/2;
+                else
+                    sleep = ((ceiling - sleep)/2) + sleep;
+            }
+
+            if (sleep > TargetFrameLen || sleep < 1) sleep = TargetFrameLen;
+
+            CounterStart();
+            Sleep((int)sleep);
+            while (CounterGet() < sleep);
         }
 
         if (InterlockedCompareExchange(&this->dd->focusGained, false, true))

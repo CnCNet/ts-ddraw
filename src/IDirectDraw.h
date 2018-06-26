@@ -88,6 +88,8 @@ struct IDirectDrawImpl
     int height;
     int bpp;
 
+    PIXELFORMATDESCRIPTOR pfd;
+
     struct
     {
         BOOL invalidate;
