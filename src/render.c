@@ -44,7 +44,6 @@ const GLchar *ConvFragShaderSrc =
     "    FragColor = colors;\n"
     "}\n";
 
-
 BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
 {
     IDirectDrawSurfaceImpl *this = (IDirectDrawSurfaceImpl *)lParam;
@@ -353,12 +352,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     if (failToGDI)
     {
-        if (this->dd->dwFlags & DDSCL_FULLSCREEN)
-        {
-            SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_INACTIVE, 0);
-            Sleep(50);
-            ShowWindow(this->dd->hWnd, SW_RESTORE);
-        }
+        SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_INACTIVE, 0);
+        Sleep(50);
+        ShowWindow(this->dd->hWnd, SW_RESTORE);
+        SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_ACTIVE, 0);
     }
 
     if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL && SwapInterval > 0)
@@ -534,7 +531,16 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
 
                 SwapBuffers(this->dd->hDC);
-                glFinish();
+
+                static int errorCheckCount = 0;
+                if (AutoRenderer && errorCheckCount < 3)
+                {
+                    errorCheckCount++;
+                    glFinish();
+
+                    if (glGetError() != GL_NO_ERROR || errorCheckCount == 3)
+                        SendMessage(this->dd->hWnd, WM_SWITCHRENDERER, 0, 0);
+                }
 
                 wglMakeCurrent(NULL, NULL);
 
@@ -635,7 +641,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             case RENDERER_OPENGL:
                 break;
             case RENDERER_GDI:
-                if (InterlockedExchangeAdd(&PrimarySurfacePBO, 0))
+                if (this->usingPBO)
                 {
                     this->surface = this->systemSurface;
                     SelectObject(this->hDC, this->bitmap);

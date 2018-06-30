@@ -801,15 +801,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             if ((wParam == VK_END) && (GetAsyncKeyState(VK_RCONTROL) & 0x8000) && AutoRenderer == true)
             {
+        case WM_SWITCHRENDERER:
                 if (InterlockedCompareExchange(&Renderer, RENDERER_GDI, RENDERER_OPENGL) == RENDERER_GDI)
                     InterlockedExchange(&Renderer, RENDERER_OPENGL);
 
-                if (this->dd->dwFlags & DDSCL_FULLSCREEN)
-                {
-                    SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_INACTIVE, 0);
-                    Sleep(50);
-                    ShowWindow(this->dd->hWnd, SW_RESTORE);
-                }
+                SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_INACTIVE, 0);
+                Sleep(50);
+                ShowWindow(this->dd->hWnd, SW_RESTORE);
+                SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_ACTIVE, 0);
+                //InterlockedExchange(&this->dd->focusGained, true);
             }
             break;
 

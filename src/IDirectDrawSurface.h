@@ -21,6 +21,7 @@
 #include "IDirectDraw.h"
 
 #define FRAME_SAMPLES 30
+#define WM_SWITCHRENDERER WM_USER+112
 
 typedef struct IDirectDrawSurfaceImplVtbl IDirectDrawSurfaceImplVtbl;
 typedef struct IDirectDrawSurfaceImpl IDirectDrawSurfaceImpl;
