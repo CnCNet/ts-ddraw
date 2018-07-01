@@ -346,8 +346,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     // End OpenGL Setup
 
 
-
-
     Sleep(500);
 
     if (failToGDI)
@@ -532,13 +530,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                 SwapBuffers(this->dd->hDC);
 
+                glFinish();
                 static int errorCheckCount = 0;
                 if (AutoRenderer && errorCheckCount < 3)
                 {
                     errorCheckCount++;
-                    glFinish();
 
-                    if (glGetError() != GL_NO_ERROR || errorCheckCount == 3)
+                    if (glGetError() != GL_NO_ERROR)
                         SendMessage(this->dd->hWnd, WM_SWITCHRENDERER, 0, 0);
                 }
 
