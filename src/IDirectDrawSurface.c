@@ -115,6 +115,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     {
         this->syncEvent = CreateEvent(NULL, true, false, NULL);
         this->pSurfaceReady = CreateEvent(NULL, true, false, NULL);
+        this->pSurfaceDrawn = CreateEvent(NULL, true, false, NULL);
 
         dprintf("Starting renderer.\n");
         this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
@@ -227,6 +228,13 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
     }
     else
     {
+        static BOOL eventSet = false;
+        if (this->dwCaps & DDSCAPS_PRIMARYSURFACE && !eventSet)
+        {
+            SetEvent(this->pSurfaceDrawn);
+            eventSet = true;
+        }
+
         RECT src = { 0, 0, srcImpl ? srcImpl->width : 0, srcImpl ? srcImpl->height : 0};
         RECT dst = { 0, 0, this->width, this->height };
 

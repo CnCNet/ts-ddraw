@@ -346,7 +346,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     // End OpenGL Setup
 
 
-    Sleep(500);
+    WaitForSingleObject(this->pSurfaceDrawn, INFINITE);
 
     if (failToGDI)
     {
