@@ -369,6 +369,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         }
     }
 
+    LONG renderer = InterlockedExchangeAdd(&Renderer, 0);
+    QPCounter renderCounter;
     double tick_time = 0.0;
     TargetFrameLen = 1000.0 / TargetFPS;
     double startTargetFPS = TargetFPS;
@@ -382,6 +384,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     RECT textRect = (RECT){0,0,0,0};
     char fpsOglString[256] = "OpenGL\nFPS: NA\nTGT: NA\n";
     char fpsGDIString[256] = "GDI\nFPS: NA\nTGT: NA\n";
+    char *warningText = "-WARNING- Using slow software rendering, please update your graphics card driver";
+    double warningDuration = 0.0;
+    QPCounter warningCounter;
+    bool hideWarning = true;
     double avg_fps = 0;
 
     // Vsync calculator variables
@@ -392,7 +398,16 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     double previous_best = TargetFrameLen * 2;
     double best_sleep = 0;
 
-    CounterStart();
+    CounterStart(&renderCounter);
+    CounterStart(&warningCounter);
+
+    if (failToGDI)
+    {
+        warningDuration = 10 * 1000.0; // 10 Seconds
+        // Let's assume the worst here: this must be an old computer
+        TargetFPS = 30.0;
+        TargetFrameLen = 1000.0 / TargetFPS;
+    }
 
     while (this->thread)
     {
@@ -400,8 +415,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         if (PrimarySurface2Tex)
             texIndex = (texIndex + 1) % 2;
 
+        if (failToGDI)
+            hideWarning = CounterGet(&warningCounter) > warningDuration;
+
+        renderer = InterlockedExchangeAdd(&Renderer, 0);
+
         {
-            switch (InterlockedExchangeAdd(&Renderer, 0))
+            switch (renderer)
             {
             case RENDERER_GDI:
                 EnterCriticalSection(&this->lock);
@@ -410,6 +430,12 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     textRect.left = this->dd->winRect.left;
                     textRect.top = this->dd->winRect.top;
                     DrawText(this->hDC, fpsGDIString, -1, &textRect, DT_NOCLIP);
+                }
+                else if (!hideWarning)
+                {
+                    textRect.left = this->dd->winRect.left;
+                    textRect.top = this->dd->winRect.top;
+                    DrawText(this->hDC, warningText, -1, &textRect, DT_NOCLIP);
                 }
 
                 if (ShouldStretch(this))
@@ -538,6 +564,11 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                     if (glGetError() != GL_NO_ERROR)
                         SendMessage(this->dd->hWnd, WM_SWITCHRENDERER, 0, 0);
+                    failToGDI = true;
+                    CounterStart(&warningCounter);
+                    warningDuration = 10 * 1000.0;
+                    TargetFPS = 30.0;
+                    TargetFrameLen = 1000.0 / TargetFPS;
                 }
 
                 wglMakeCurrent(NULL, NULL);
@@ -552,7 +583,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
         }
 
-        tick_time = CounterGet();
+        tick_time = CounterGet(&renderCounter);
 
         recent_frames[rIndex++] = tick_time;
 
@@ -589,7 +620,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             startTargetFPS = TargetFPS;
         }
 
-        tick_time = CounterGet();
+        tick_time = CounterGet(&renderCounter);
         if (SwapInterval < 1)
         {
             if (tick_time < TargetFrameLen)
@@ -598,10 +629,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 Sleep(sleep);
 
                 // Finish sub-millisecond sleep
-                while (CounterGet() < TargetFrameLen);
+                while (CounterGet(&renderCounter) < TargetFrameLen);
             }
         }
-        else if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+        else if (renderer == RENDERER_OPENGL)
         {
             // Calculate optimal sleep time for vsync mode.
             if (bCount == FRAME_SAMPLES  && rIndex == FRAME_SAMPLES - 1)
@@ -627,9 +658,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
             if (sleep > TargetFrameLen || sleep < 1) sleep = TargetFrameLen;
 
-            CounterStart();
+            CounterStart(&renderCounter);
             Sleep((int)sleep);
-            while (CounterGet() < sleep);
+            while (CounterGet(&renderCounter) < sleep);
         }
 
         if (InterlockedCompareExchange(&this->dd->focusGained, false, true))
@@ -649,7 +680,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             default: break;
             }
         }
-        CounterStart();
+        CounterStart(&renderCounter);
     }
 
     return 0;
