@@ -563,12 +563,14 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     errorCheckCount++;
 
                     if (glGetError() != GL_NO_ERROR)
+                    {
                         SendMessage(this->dd->hWnd, WM_SWITCHRENDERER, 0, 0);
-                    failToGDI = true;
-                    CounterStart(&warningCounter);
-                    warningDuration = 10 * 1000.0;
-                    TargetFPS = 30.0;
-                    TargetFrameLen = 1000.0 / TargetFPS;
+                        failToGDI = true;
+                        CounterStart(&warningCounter);
+                        warningDuration = 10 * 1000.0;
+                        TargetFPS = 30.0;
+                        TargetFrameLen = 1000.0 / TargetFPS;
+                    }
                 }
 
                 wglMakeCurrent(NULL, NULL);
