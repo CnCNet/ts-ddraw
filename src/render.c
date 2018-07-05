@@ -56,14 +56,25 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
     RECT pos;
     GetWindowRect(hWnd, &pos);
 
-    if (this->usingPBO && InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
+    LONG renderer = InterlockedExchangeAdd(&Renderer, 0);
+
+    if (this->usingPBO && renderer == RENDERER_OPENGL)
     {
         //the GDI struggle is real
         // Copy the scanlines of menu windows from pboSurface to the gdi surface
-        SetDIBits(NULL, this->bitmap, pos.top, pos.bottom - pos.top, this->surface, this->bmi, DIB_RGB_COLORS);
+        SelectObject(this->hDC, this->bitmap);
+        memcpy((uint8_t*)this->systemSurface + (pos.top * this->lPitch),
+               (uint8_t*)this->surface + (pos.top * this->lPitch),
+               pos.bottom * this->lPitch);
+
     }
 
     BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
+
+    if (this->usingPBO && renderer == RENDERER_OPENGL)
+    {
+        SelectObject(this->hDC, this->defaultBM);
+    }
 
     ReleaseDC(hWnd, hDC);
 
