@@ -65,7 +65,7 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
         SelectObject(this->hDC, this->bitmap);
         memcpy((uint8_t*)this->systemSurface + (pos.top * this->lPitch),
                (uint8_t*)this->surface + (pos.top * this->lPitch),
-               pos.bottom * this->lPitch);
+               (pos.bottom - pos.top) * this->lPitch);
 
     }
 
