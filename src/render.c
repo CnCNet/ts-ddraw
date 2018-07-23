@@ -567,7 +567,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                 SwapBuffers(this->dd->hDC);
 
-                glFinish();
+                if (GlFinish)
+                    glFinish();
                 static int errorCheckCount = 0;
                 if (AutoRenderer && errorCheckCount < 3)
                 {

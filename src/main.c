@@ -50,6 +50,7 @@ bool AutoRenderer = true;
 int SwapInterval = 0;
 LONG PrimarySurfacePBO = 0;
 bool PrimarySurface2Tex = true;
+bool GlFinish = false;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {
