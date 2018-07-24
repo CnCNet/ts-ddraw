@@ -478,15 +478,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
             case RENDERER_OPENGL:
 
-                wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_render);
-
                 EnterCriticalSection(&this->lock);
                 if (DrawFPS)
                 {
                     textRect.left = this->dd->winRect.left;
                     textRect.top = this->dd->winRect.top;
 
-                    if (this->usingPBO)
+                    if (this->usingPBO && this->surface)
                     {
                         // Copy the scanlines that will be behind the FPS counter to the GDI surface
                         memcpy((uint8_t*)this->systemSurface + (textRect.top * this->lPitch),
@@ -497,7 +495,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                     textRect.bottom = DrawText(this->hDC, fpsOglString, -1, &textRect, DT_NOCLIP);
 
-                    if (this->usingPBO)
+                    if (this->usingPBO && this->surface)
                     {
                         // Copy the scanlines from the gdi surface back to pboSurface
                         memcpy((uint8_t*)this->surface + (textRect.top * this->lPitch),
@@ -567,7 +565,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                 SwapBuffers(this->dd->hDC);
 
-                if (GlFinish)
+                if (GlFinish || SwapInterval > 0)
                     glFinish();
                 static int errorCheckCount = 0;
                 if (AutoRenderer && errorCheckCount < 3)
@@ -582,11 +580,9 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                         warningDuration = 10 * 1000.0;
                         TargetFPS = 30.0;
                         TargetFrameLen = 1000.0 / TargetFPS;
+                        wglMakeCurrent(NULL, NULL);
                     }
                 }
-
-                wglMakeCurrent(NULL, NULL);
-
                 break;
 
             default:
@@ -679,9 +675,15 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         if (InterlockedCompareExchange(&this->dd->focusGained, false, true))
         {
+            EnterCriticalSection(&this->lock);
             switch (InterlockedExchangeAdd(&Renderer, 0))
             {
             case RENDERER_OPENGL:
+                if (this->usingPBO)
+                {
+                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
+                    this->surface = (void*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
+                }
                 break;
             case RENDERER_GDI:
                 if (this->usingPBO)
@@ -693,6 +695,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
             default: break;
             }
+            LeaveCriticalSection(&this->lock);
         }
         CounterStart(&renderCounter);
     }

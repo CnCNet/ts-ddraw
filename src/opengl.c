@@ -67,6 +67,7 @@ PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus = NULL;
 PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers = NULL;
 
 PFNWGLSWAPINTERVALEXT wglSwapIntervalEXT = NULL;
+PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringARB = NULL;
 
 void OpenGL_Init()
 {
@@ -132,9 +133,10 @@ void OpenGL_Init()
     glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)wglGetProcAddress("glDeleteFramebuffers");
 
     wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXT)wglGetProcAddress("wglSwapIntervalEXT");
+    wglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)wglGetProcAddress("wglGetExtensionsStringARB");
 }
 
-BOOL OpenGL_ExtExists(char *ext)
+BOOL OpenGL_ExtExists(char *ext, HDC hdc)
 {
     char *glext = (char *)glGetString(GL_EXTENSIONS);
     if (glext)
@@ -142,6 +144,16 @@ BOOL OpenGL_ExtExists(char *ext)
         if (strstr(glext, ext))
             return TRUE;
     }
+
+    if (wglGetExtensionsStringARB)
+    {
+        char *wglext = (char *)wglGetExtensionsStringARB(hdc);
+        if (wglext)
+        {
+            if (strstr(wglext, ext))
+                return TRUE;
+        }
+}
     return FALSE;
 }
 

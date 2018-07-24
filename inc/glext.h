@@ -11001,6 +11001,7 @@ GLAPI void APIENTRY glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN (co
 #endif /* GL_WIN_specular_fog */
 
 typedef void (APIENTRYP PFNWGLSWAPINTERVALEXT) (int interval);
+typedef const char* (WINAPI *PFNWGLGETEXTENSIONSSTRINGARBPROC)(HDC hdc);
 
 #ifdef __cplusplus
 }

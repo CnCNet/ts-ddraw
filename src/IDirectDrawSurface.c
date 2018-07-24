@@ -20,11 +20,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "opengl.h"
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include "glext.h"
-
 DWORD WINAPI render(IDirectDrawSurfaceImpl *this);
 
 static IDirectDrawSurfaceImplVtbl Vtbl;

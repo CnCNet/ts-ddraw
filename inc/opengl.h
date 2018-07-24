@@ -4,7 +4,7 @@
 #include "glext.h"
 
 void OpenGL_Init();
-BOOL OpenGL_ExtExists(char *ext);
+BOOL OpenGL_ExtExists(char *ext, HDC hdc);
 GLuint OpenGL_BuildProgram(const GLchar *vertSource, const GLchar *fragSource);
 GLuint OpenGL_BuildProgramFromFile(const char *filePath);
 
