@@ -530,6 +530,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
                 return DDERR_INVALIDMODE;
             }
         }
+        SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
 
         POINT p = { 0, 0 };
         ClientToScreen(this->dd->hWnd, &p);
@@ -651,6 +652,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     static double rememberFPS = -1;
     static DWORD rememberDrawFPS = 0;
 
+    // Track Full Screen status for wine/gnome 3.
+    static BOOL fsActive = true;
+
     switch(uMsg)
     {
         //Workaround for invisible menu on Load/Save/Delete in Tiberian Sun
@@ -707,7 +711,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
                 {
+                    fsActive = true;
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
+                    SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
+
                     mouse_lock(hWnd);
                     InterlockedExchange(&this->dd->focusGained, true);
                 }
@@ -715,6 +722,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     ChangeDisplaySettings(&this->winMode, 0);
                     ShowWindow(this->hWnd, SW_MINIMIZE);
+                    fsActive = false;
                 }
             }
             else // windowed
@@ -740,6 +748,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 ClientToScreen(this->dd->hWnd, &p);
                 GetClientRect(this->dd->hWnd, &this->winRect);
                 OffsetRect(&this->winRect, p.x, p.y);
+                int x = lParam & 0xffff;
+                int y = lParam >> 16;
+
+                if (x == 0 && y == 0 && !fsActive)
+                {
+                    // If the window has been moved to 0,0 when it's inactive that means gnome 3 is activating the window
+                    WndProc(hWnd, WM_ACTIVATE, WA_ACTIVE, 0);
+                }
 
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
                 break;
@@ -756,6 +772,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_SYSCOMMAND:
             if (wParam == SC_CLOSE && GameHandlesClose != true)
             {
+                // Recursive call is needed here to reset reset desktop resolution on wine/gnome 3
+                WndProc(hWnd, WM_ACTIVATE, WA_INACTIVE, 0);
                 exit(0);
             }
             break;
@@ -902,7 +920,7 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
                     int y = (this->screenHeight / 2) - (this->winRect.bottom / 2);
                     RECT dst = { x, y, this->winRect.right+x, this->winRect.bottom+y };
                     AdjustWindowRect(&dst, GetWindowLong(this->hWnd, GWL_STYLE), FALSE);
-                    SetWindowPos(this->hWnd, HWND_TOP, dst.left, dst.top, (dst.right - dst.left), (dst.bottom - dst.top), SWP_SHOWWINDOW);
+                    SetWindowPos(this->hWnd, HWND_TOPMOST, dst.left, dst.top, (dst.right - dst.left), (dst.bottom - dst.top), SWP_SHOWWINDOW);
                 }
             }
 
