@@ -2,7 +2,7 @@
 #define vxstr(a,b,c,d) str(a##.##b##.##c##.##d)
 #define str(s) #s
 
-#define VERSION 1,1,4,5
+#define VERSION 1,1,4,6
 
 1 VERSIONINFO
 FILEVERSION VERSION
