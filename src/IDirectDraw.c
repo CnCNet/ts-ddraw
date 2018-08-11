@@ -463,7 +463,12 @@ void SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
         this->render.viewport.x != 0 ||
         this->render.viewport.y != 0;
 
-    SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
+    // Don't resize the window in full screen mode. This prevents X window managers
+    // from moving the window around in full screen mode
+    if (!(this->dwFlags & DDSCL_FULLSCREEN))
+    {
+        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
+    }
 
     this->render.invalidate = TRUE;
 }
@@ -506,10 +511,37 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             }
         }
 
-        this->mode.dmSize = sizeof(this->mode);
-        this->mode.dmFields = DM_PELSWIDTH|DM_PELSHEIGHT;
-        this->mode.dmPelsWidth = this->render.width;
-        this->mode.dmPelsHeight = this->render.height;
+        int index = 0;
+        DEVMODE dm;
+        BOOL foundDevMode = false;
+        while ( 0 != EnumDisplaySettings(NULL, index++, &dm))
+        {
+            if ((dm.dmFields & (DM_PELSWIDTH|DM_PELSHEIGHT)) == (DM_PELSWIDTH|DM_PELSHEIGHT))
+            {
+                if (this->mode.dmBitsPerPel != this->bpp)
+                {
+                    if (dm.dmPelsWidth == this->render.width && dm.dmPelsHeight == this->render.height)
+                    {
+                        memcpy(&this->mode, &dm, sizeof(this->mode));
+                        foundDevMode = true;
+                    }
+                }
+            }
+        }
+
+        if (!foundDevMode)
+        {
+            this->mode.dmSize = sizeof(this->mode);
+            this->mode.dmFields = DM_PELSWIDTH|DM_PELSHEIGHT;
+            this->mode.dmPelsWidth = this->render.width;
+            this->mode.dmPelsHeight = this->render.height;
+        }
+
+        // Only use the full screen hack in wine since it might disrupt OBS and recording software.
+        if (IsWine())
+            SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+        else
+            SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
 
         if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
@@ -521,8 +553,6 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 
                 if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
                     return DDERR_INVALIDMODE;
-
-                SetWindowSize(this, width, height);
             }
             else
             {
@@ -530,13 +560,14 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
                 return DDERR_INVALIDMODE;
             }
         }
+        SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_SHOWWINDOW);
 
         POINT p = { 0, 0 };
         ClientToScreen(this->dd->hWnd, &p);
         GetClientRect(this->dd->hWnd, &this->winRect);
         OffsetRect(&this->winRect, p.x, p.y);
 
-        mouse_lock(this->hWnd);
+        mouse_lock(this);
     }
 
     dprintf("<-- IDirectDraw::SetDisplayMode(this=%p, width=%d, height=%d, bpp=%d) -> %08X\n", this, (int)width, (int)height, (int)bpp, (int)ret);
@@ -590,11 +621,11 @@ BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle
 
 bool CaptureMouse = false;
 bool MouseIsLocked = false;
-void mouse_lock(HWND hWnd)
+void mouse_lock(IDirectDrawImpl *this)
 {
     RECT rc;
 
-    GetClientRect(hWnd, &rc);
+    GetClientRect(this->hWnd, &rc);
 
     if (ddraw->render.stretched)
     {
@@ -605,10 +636,13 @@ void mouse_lock(HWND hWnd)
     // Convert the client area to screen coordinates.
     POINT pt = { rc.left, rc.top };
     POINT pt2 = { rc.right, rc.bottom };
-    ClientToScreen(hWnd, &pt);
-    ClientToScreen(hWnd, &pt2);
+    ClientToScreen(this->hWnd, &pt);
+    ClientToScreen(this->hWnd, &pt2);
 
-    SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
+    if (this->dwFlags & DDSCL_FULLSCREEN)
+        SetRect(&rc, 0, 0, this->width, this->height);
+    else
+        SetRect(&rc, pt.x, pt.y, pt2.x, pt2.y);
 
     ClipCursor(&rc);
     CaptureMouse = true;
@@ -677,7 +711,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
             if (!MouseIsLocked)
-                mouse_lock(hWnd);
+                mouse_lock(this);
             break;
 
         case WM_ACTIVATE:
@@ -707,14 +741,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
                 {
+                    ShowWindow(this->hWnd, SC_RESTORE);
+                    if (IsWine())
+                        SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
-                    mouse_lock(hWnd);
+                    SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE);
+                    mouse_lock(this);
                     InterlockedExchange(&this->dd->focusGained, true);
                 }
                 else if (wParam == WA_INACTIVE)
                 {
+                    SetWindowPos(this->hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
+                    ShowWindow(this->hWnd, SC_MINIMIZE);
                     ChangeDisplaySettings(&this->winMode, 0);
-                    ShowWindow(this->hWnd, SW_MINIMIZE);
                 }
             }
             else // windowed
@@ -740,7 +779,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 ClientToScreen(this->dd->hWnd, &p);
                 GetClientRect(this->dd->hWnd, &this->winRect);
                 OffsetRect(&this->winRect, p.x, p.y);
-
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
                 break;
             }
@@ -779,7 +817,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
                 else
                 {
-                    mouse_lock(hWnd);
+                    mouse_lock(this);
                     CaptureMouse = true;
                 }
                 return 0;
@@ -809,7 +847,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 Sleep(50);
                 ShowWindow(this->dd->hWnd, SW_RESTORE);
                 SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_ACTIVE, 0);
-                //InterlockedExchange(&this->dd->focusGained, true);
             }
             break;
 

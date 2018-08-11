@@ -332,3 +332,9 @@ BOOL IsWindowsXp()
     }
     return false;
 }
+
+BOOL IsWine()
+{
+    HANDLE dll = GetModuleHandleA("ntdll.dll");
+    return GetProcAddress(dll, "wine_get_version") != NULL;
+}

@@ -50,6 +50,7 @@ void dump_ddpixelformat(LPDDPIXELFORMAT);
 void dump_ddbltfx(LPDDBLTFX);
 void DebugPrint(const char *format, ...);
 BOOL IsWindowsXp();
+BOOL IsWine();
 
 bool GameHandlesClose;
 int DrawFPS;
