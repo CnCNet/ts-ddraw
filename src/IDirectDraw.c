@@ -648,7 +648,7 @@ void mouse_lock(IDirectDrawImpl *this)
     CaptureMouse = true;
     MouseIsLocked = true;
 
-    while(ShowCursor(false) >= 0) ;
+    //while(ShowCursor(false) >= 0) ;
 }
 
 void mouse_unlock(BOOL showCursor)
@@ -656,8 +656,8 @@ void mouse_unlock(BOOL showCursor)
     ClipCursor(NULL);
     MouseIsLocked = false;
 
-    if (showCursor)
-        while(ShowCursor(true) < 0);
+    //if (showCursor)
+    //    while(ShowCursor(true) < 0);
 }
 
 void center_mouse(HWND hWnd)
