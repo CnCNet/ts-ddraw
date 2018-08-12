@@ -539,9 +539,9 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 
         // Only use the full screen hack in wine since it might disrupt OBS and recording software.
         if (IsWine())
-            SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+            SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
         else
-            SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
+            SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
 
         if (ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
@@ -560,7 +560,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
                 return DDERR_INVALIDMODE;
             }
         }
-        SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_SHOWWINDOW);
+        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE|SWP_SHOWWINDOW);
 
         POINT p = { 0, 0 };
         ClientToScreen(this->dd->hWnd, &p);
@@ -743,17 +743,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     ShowWindow(this->hWnd, SC_RESTORE);
                     if (IsWine())
-                        SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+                        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
-                    SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE);
+                    SetWindowPos(this->hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
                     mouse_lock(this);
                     InterlockedExchange(&this->dd->focusGained, true);
                 }
                 else if (wParam == WA_INACTIVE)
                 {
-                    SetWindowPos(this->hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
-                    ShowWindow(this->hWnd, SC_MINIMIZE);
+                    if (IsWine())
+                        ShowWindow(this->hWnd, SC_MINIMIZE);
+
                     ChangeDisplaySettings(&this->winMode, 0);
+
+                    if (IsWine())
+                        SetWindowPos(this->hWnd, HWND_BOTTOM, 0, 0, this->render.width, this->render.height,
+                                     SWP_NOMOVE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
+                    else
+                        SetWindowPos(this->hWnd, HWND_NOTOPMOST, 0, 0, this->render.width, this->render.height,
+                                     SWP_NOMOVE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
                 }
             }
             else // windowed
