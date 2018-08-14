@@ -119,4 +119,5 @@ struct IDirectDrawImpl
 IDirectDrawImpl *IDirectDrawImpl_construct();
 void mouse_lock(IDirectDrawImpl *this);
 
+#define TIMER_FIX_WINDOWPOS 78
 #endif

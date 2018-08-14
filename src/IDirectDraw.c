@@ -465,10 +465,10 @@ void SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
 
     // Don't resize the window in full screen mode. This prevents X window managers
     // from moving the window around in full screen mode
-    if (!(this->dwFlags & DDSCL_FULLSCREEN))
-    {
+    if (this->dwFlags & DDSCL_FULLSCREEN)
+        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+    else
         SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->render.width, this->render.height, SWP_SHOWWINDOW);
-    }
 
     this->render.invalidate = TRUE;
 }
@@ -510,6 +510,9 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
                 //ret = DDERR_UNSUPPORTED;
             }
         }
+
+        if (IsWine())
+            SetWindowLong(this->hWnd, GWL_STYLE, GetWindowLong(this->hWnd, GWL_STYLE) | WS_MINIMIZEBOX);
 
         int index = 0;
         DEVMODE dm;
@@ -560,7 +563,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
                 return DDERR_INVALIDMODE;
             }
         }
-        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE|SWP_SHOWWINDOW);
+        SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_SHOWWINDOW);
 
         POINT p = { 0, 0 };
         ClientToScreen(this->dd->hWnd, &p);
@@ -685,6 +688,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     static double rememberFPS = -1;
     static DWORD rememberDrawFPS = 0;
 
+    static BOOL fsActive = true;
+
     switch(uMsg)
     {
         //Workaround for invisible menu on Load/Save/Delete in Tiberian Sun
@@ -741,35 +746,57 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
                 {
-                    ShowWindow(this->hWnd, SC_RESTORE);
-                    if (IsWine())
-                        SetWindowPos(this->hWnd, HWND_TOP, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+                    fsActive = true;
+                    ShowWindow(this->hWnd, SW_RESTORE);
                     ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
-                    SetWindowPos(this->hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
                     mouse_lock(this);
                     InterlockedExchange(&this->dd->focusGained, true);
                 }
                 else if (wParam == WA_INACTIVE)
                 {
-                    if (IsWine())
-                        ShowWindow(this->hWnd, SC_MINIMIZE);
-
+                    fsActive = false;
+                    ShowWindow(this->hWnd, SW_MINIMIZE);
                     ChangeDisplaySettings(&this->winMode, 0);
-
-                    if (IsWine())
-                        SetWindowPos(this->hWnd, HWND_BOTTOM, 0, 0, this->render.width, this->render.height,
-                                     SWP_NOMOVE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
-                    else
-                        SetWindowPos(this->hWnd, HWND_NOTOPMOST, 0, 0, this->render.width, this->render.height,
-                                     SWP_NOMOVE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
                 }
             }
             else // windowed
             {
-
+                if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
+                {
+                    SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->render.width, this->render.height,
+                                 SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
+                }
+                else if (wParam == WA_INACTIVE)
+                {
+                    SetWindowPos(this->hWnd, HWND_NOTOPMOST, 0, 0, this->render.width, this->render.height,
+                                 SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
+                }
             }
 
             wParam = WA_ACTIVE;
+            break;
+
+        case WM_WINDOWPOSCHANGED:
+        {
+            WINDOWPOS *pos = (WINDOWPOS *)lParam;
+            if ((this->dwFlags & DDSCL_FULLSCREEN) && fsActive && IsWine()
+                && (pos->x > 1 || pos->y > 1))
+            {
+                SetTimer(this->hWnd, TIMER_FIX_WINDOWPOS, 500, (TIMERPROC)NULL);
+            }
+            break;
+        }
+        case WM_TIMER:
+            switch(wParam)
+            {
+            case TIMER_FIX_WINDOWPOS:
+                KillTimer(this->hWnd, TIMER_FIX_WINDOWPOS);
+                SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 1, 1, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+                SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+                return 0;
+                break;
+            default: break;
+            }
             break;
 
         case WM_SIZE:
