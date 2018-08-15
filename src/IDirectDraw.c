@@ -563,7 +563,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
                 return DDERR_INVALIDMODE;
             }
         }
-        SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE|SWP_SHOWWINDOW);
+        SetWindowPos(ddraw->hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE|SWP_SHOWWINDOW);
 
         POINT p = { 0, 0 };
         ClientToScreen(this->dd->hWnd, &p);
@@ -761,16 +761,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else // windowed
             {
-                if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
-                {
-                    SetWindowPos(this->hWnd, HWND_TOPMOST, 0, 0, this->render.width, this->render.height,
-                                 SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
-                }
-                else if (wParam == WA_INACTIVE)
-                {
-                    SetWindowPos(this->hWnd, HWND_NOTOPMOST, 0, 0, this->render.width, this->render.height,
-                                 SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_NOACTIVATE);
-                }
             }
 
             wParam = WA_ACTIVE;
@@ -791,8 +781,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
             case TIMER_FIX_WINDOWPOS:
                 KillTimer(this->hWnd, TIMER_FIX_WINDOWPOS);
-                SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 1, 1, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
-                SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+                SetWindowPos(ddraw->hWnd, HWND_TOP, 1, 1, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+                SetWindowPos(ddraw->hWnd, HWND_TOP, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
                 return 0;
                 break;
             default: break;
