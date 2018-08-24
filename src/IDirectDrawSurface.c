@@ -255,7 +255,7 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
                 dst.bottom = this->height;
         }
 
-        if (dwFlags & DDBLT_COLORFILL)
+        if ((dwFlags & DDBLT_COLORFILL) && this->surface)
         {
             EnterCriticalSection(&this->lock);
 
