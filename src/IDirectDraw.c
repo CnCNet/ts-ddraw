@@ -612,13 +612,19 @@ BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint)
 
     BOOL ret = GetCursorPos(lpPoint);
 
+    POINT tl = { 0, 0 };
+    POINT br = { ddraw->width, ddraw->height };
+
+    ClientToScreen(ddraw->hWnd, &tl);
+    ClientToScreen(ddraw->hWnd, &br);
+
     if (ret)
     {
-        lpPoint->x = lpPoint->x < 3 ? 3 : lpPoint->x;
-        lpPoint->x = lpPoint->x > (ddraw->width - 3) ? ddraw->width - 3 : lpPoint->x;
+        lpPoint->x = lpPoint->x < (tl.x + 3) ? (tl.x + 3) : lpPoint->x;
+        lpPoint->x = lpPoint->x > (br.x - 3) ? (br.x - 3) : lpPoint->x;
 
-        lpPoint->y = lpPoint->y < 3 ? 3 : lpPoint->y;
-        lpPoint->y = lpPoint->y > (ddraw->height - 3) ? ddraw->height - 3 : lpPoint->y;
+        lpPoint->y = lpPoint->y < (tl.y + 3) ? (tl.y + 3) : lpPoint->y;
+        lpPoint->y = lpPoint->y > (br.y - 3) ? (br.y - 3) : lpPoint->y;
     }
 
     return ret;
