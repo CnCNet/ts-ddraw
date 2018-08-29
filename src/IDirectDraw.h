@@ -32,6 +32,8 @@ extern int StretchToHeight;
 
 BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 BOOL WINAPI fake_MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint);
+BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint);
+
 BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle);
 
 typedef struct IDirectDrawImplVtbl IDirectDrawImplVtbl;
@@ -114,10 +116,20 @@ struct IDirectDrawImpl
     } glInfo;
 
     LONG focusGained;
+    LONG mouseIsLocked;
+
+    LONG edgeDimension;
+    LONG edgeValue;
+    LONG edgeTimeoutMs;
 };
+
+#define EDGE_NULL 1
+#define EDGE_X 2
+#define EDGE_Y 3
 
 IDirectDrawImpl *IDirectDrawImpl_construct();
 void mouse_lock(IDirectDrawImpl *this);
 
 #define TIMER_FIX_WINDOWPOS 78
+#define TIMER_EDGE 79
 #endif

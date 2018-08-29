@@ -605,6 +605,25 @@ BOOL WINAPI fake_MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BO
     return MoveWindow(hWnd, X, Y, nWidth, nHeight, bRepaint);
 }
 
+BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint)
+{
+    if (InterlockedExchangeAdd(&ddraw->mouseIsLocked, 0) != 0)
+        return GetCursorPos(lpPoint);
+
+    BOOL ret = GetCursorPos(lpPoint);
+
+    if (ret)
+    {
+        lpPoint->x = lpPoint->x < 3 ? 3 : lpPoint->x;
+        lpPoint->x = lpPoint->x > (ddraw->width - 3) ? ddraw->width - 3 : lpPoint->x;
+
+        lpPoint->y = lpPoint->y < 3 ? 3 : lpPoint->y;
+        lpPoint->y = lpPoint->y > (ddraw->height - 3) ? ddraw->height - 3 : lpPoint->y;
+    }
+
+    return ret;
+}
+
 BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle)
 {
     RECT rc;
@@ -623,7 +642,7 @@ BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle
 }
 
 bool CaptureMouse = false;
-bool MouseIsLocked = false;
+
 void mouse_lock(IDirectDrawImpl *this)
 {
     RECT rc;
@@ -649,7 +668,7 @@ void mouse_lock(IDirectDrawImpl *this)
 
     ClipCursor(&rc);
     CaptureMouse = true;
-    MouseIsLocked = true;
+    InterlockedExchange(&ddraw->mouseIsLocked, 1);
 
     //while(ShowCursor(false) >= 0) ;
 }
@@ -657,7 +676,7 @@ void mouse_lock(IDirectDrawImpl *this)
 void mouse_unlock(BOOL showCursor)
 {
     ClipCursor(NULL);
-    MouseIsLocked = false;
+    InterlockedExchange(&ddraw->mouseIsLocked, 0);
 
     //if (showCursor)
     //    while(ShowCursor(true) < 0);
@@ -698,8 +717,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (LOWORD(wParam) == WM_DESTROY)
                 redrawCount = 2;
-            else if (LOWORD(wParam) == WM_CREATE)
-                mouse_unlock(false);
             break;
         }
         case WM_PAINT:
@@ -715,11 +732,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONDOWN:
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
-            if (!MouseIsLocked)
+            if (InterlockedExchangeAdd(&this->mouseIsLocked, 0) == 0)
                 mouse_lock(this);
             break;
 
         case WM_ACTIVATE:
+            if (this->dwFlags & DDSCL_FULLSCREEN)
+            {
+                if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
+                {
+                    fsActive = true;
+                    ShowWindow(this->hWnd, SW_RESTORE);
+                    ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
+                    mouse_lock(this);
+                    InterlockedExchange(&this->dd->focusGained, true);
+                }
+                else if (wParam == WA_INACTIVE && InterlockedExchangeAdd(&this->mouseIsLocked, 0) != 0)
+                {
+                    fsActive = false;
+                    ShowWindow(this->hWnd, SW_MINIMIZE);
+                    ChangeDisplaySettings(&this->winMode, 0);
+                }
+            }
+            else // windowed
+            {
+            }
+
             /* keep the cursor restrained after alt-tabbing */
             if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
             {
@@ -742,27 +780,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 mouse_unlock(false);
             }
 
-            if (this->dwFlags & DDSCL_FULLSCREEN)
-            {
-                if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
-                {
-                    fsActive = true;
-                    ShowWindow(this->hWnd, SW_RESTORE);
-                    ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
-                    mouse_lock(this);
-                    InterlockedExchange(&this->dd->focusGained, true);
-                }
-                else if (wParam == WA_INACTIVE)
-                {
-                    fsActive = false;
-                    ShowWindow(this->hWnd, SW_MINIMIZE);
-                    ChangeDisplaySettings(&this->winMode, 0);
-                }
-            }
-            else // windowed
-            {
-            }
-
             wParam = WA_ACTIVE;
             break;
 
@@ -783,6 +800,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 KillTimer(this->hWnd, TIMER_FIX_WINDOWPOS);
                 SetWindowPos(ddraw->hWnd, HWND_TOP, 1, 1, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
                 SetWindowPos(ddraw->hWnd, HWND_TOP, 0, 0, this->screenWidth, this->screenHeight, SWP_SHOWWINDOW);
+                return 0;
+                break;
+
+            case TIMER_EDGE:
+                KillTimer(this->hWnd, TIMER_EDGE);
+                mouse_unlock(false);
                 return 0;
                 break;
             default: break;
@@ -880,6 +903,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             mouse_unlock(false);
             return 0;
             break;
+
+        case WM_MOUSEMOVE:
+        {
+            LONG xPos = (lParam & 0xffff);
+            LONG yPos = (lParam & 0xffff0000) >> 16;
+            if (this->edgeTimeoutMs > 0)
+            {
+                switch (this->edgeDimension)
+                {
+                case EDGE_X:
+                    if (xPos != this->edgeValue)
+                    {
+                        if (xPos == 0 || xPos == this->width -1)
+                        {
+                            this->edgeValue = xPos;
+                            SetTimer(this->hWnd, TIMER_EDGE, this->edgeTimeoutMs, (TIMERPROC)NULL);
+                        }
+                        else goto killEdgeTimer;
+                    }
+                    break;
+
+                case EDGE_Y:
+                    if (yPos != this->edgeValue)
+                    {
+                        if (yPos == 0 || yPos == this->height -1)
+                        {
+                            this->edgeValue = yPos;
+                            SetTimer(this->hWnd, TIMER_EDGE, this->edgeTimeoutMs, (TIMERPROC)NULL);
+                        }
+                        else goto killEdgeTimer;
+                    }
+                    break;
+
+                case EDGE_NULL:
+                    if (xPos == 0 || xPos == this->width -1)
+                    {
+                        this->edgeDimension = EDGE_X;
+                        this->edgeValue = xPos;
+                        SetTimer(this->hWnd, TIMER_EDGE, this->edgeTimeoutMs, (TIMERPROC)NULL);
+                    }
+                    else if (yPos == 0 || yPos == this->height -1)
+                    {
+                        this->edgeDimension = EDGE_Y;
+                        this->edgeValue = yPos;
+                        SetTimer(this->hWnd, TIMER_EDGE, this->edgeTimeoutMs, (TIMERPROC)NULL);
+                    }
+                    break;
+                default: goto killEdgeTimer;
+                }
+            }
+            break;
+        killEdgeTimer:
+            this->edgeDimension = EDGE_NULL;
+            KillTimer(this->hWnd, TIMER_EDGE);
+        }
     }
 
     return this->wndProc(hWnd, uMsg, wParam, lParam);
@@ -909,6 +987,8 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             this->hWnd = hWnd;
             this->hDC = GetDC(this->hWnd);
             this->wndProc = (LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(this->hWnd, GWL_WNDPROC);
+
+            this->edgeTimeoutMs = MonitorEdgeTimer;
 
             SetWindowLong(this->hWnd, GWL_WNDPROC, (LONG)WndProc);
 

@@ -68,6 +68,7 @@ bool AutoRenderer;
 LONG PrimarySurfacePBO;
 bool PrimarySurface2Tex;
 bool GlFinish;
+LONG MonitorEdgeTimer;
 
 #define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)
 

@@ -47,6 +47,8 @@ void SettingsLoad()
         if (GetProcessAffinityMask(proc, &procAffinity, &systemAffinity))
             SetProcessAffinityMask(proc, systemAffinity);
     }
+
+    MonitorEdgeTimer = GetInt("MonitorEdgeTimer", MonitorEdgeTimer);
 }
 
 static bool GetBool(LPCTSTR key, bool defaultValue)
