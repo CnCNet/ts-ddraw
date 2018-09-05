@@ -69,6 +69,7 @@ LONG PrimarySurfacePBO;
 bool PrimarySurface2Tex;
 bool GlFinish;
 LONG MonitorEdgeTimer;
+bool ThreadSafe;
 
 #define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)
 

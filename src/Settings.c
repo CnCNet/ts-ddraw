@@ -35,7 +35,7 @@ void SettingsLoad()
 
     InterlockedExchange(&PrimarySurfacePBO, GetInt("PrimarySurfacePBO", PrimarySurfacePBO));
 
-    if (( SingleProcAffinity = GetBool("SingleProcAffinity", true) ))
+    if (( SingleProcAffinity = GetBool("SingleProcAffinity", !ThreadSafe) ))
     {
         SetProcessAffinityMask(GetCurrentProcess(), 1);
     }

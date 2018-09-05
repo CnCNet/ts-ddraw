@@ -11,3 +11,4 @@ EXPORTS
     StretchToFullscreen         DATA
     StretchToWidth              DATA
     StretchToHeight             DATA
+    ThreadSafe                  DATA

@@ -1,8 +1,9 @@
 -include config.mk
 
-CC ?= i686-w64-mingw32-gcc
-WINDRES ?= windres
-STRIP ?= strip
+PLATFORMPREFIX ?= i686-w64-mingw32-
+CC ?= $(PLATFORMPREFIX)gcc
+WINDRES ?= $(PLATFORMPREFIX)windres
+STRIP ?= $(PLATFORMPREFIX)strip
 COPY ?= copy
 
 CFLAGS=--std=c99 -Iinc -Wall -Wl,--enable-stdcall-fixup -O6 -g
