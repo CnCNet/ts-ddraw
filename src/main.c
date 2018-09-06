@@ -53,6 +53,7 @@ bool PrimarySurface2Tex = true;
 bool GlFinish = false;
 LONG MonitorEdgeTimer = 0;
 bool ThreadSafe = false;
+bool ConvertOnGPU = true;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {

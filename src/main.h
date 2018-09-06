@@ -70,6 +70,7 @@ bool PrimarySurface2Tex;
 bool GlFinish;
 LONG MonitorEdgeTimer;
 bool ThreadSafe;
+bool ConvertOnGPU;
 
 #define debug_(format, ...) DebugPrint("xDBG " format "\n", ##__VA_ARGS__)
 

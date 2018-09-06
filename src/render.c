@@ -142,7 +142,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             glEnableVertexAttribArray && glUniform2fv && glUniformMatrix4fv && glGenVertexArrays && glBindVertexArray &&
             glGetUniformLocation;
 
-        if (gotOpenglV3 && !GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version"))
+        if (gotOpenglV3 && ConvertOnGPU)
             convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
 
         glGenTextures(2, &this->textures[0]);
