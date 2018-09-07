@@ -74,5 +74,6 @@ void hook_init()
         HookIAT(GetModuleHandle(NULL), "user32.dll", "MoveWindow", (PROC)fake_MoveWindow);
         HookIAT(GetModuleHandle(NULL), "user32.dll", "SetWindowPos", (PROC)fake_SetWindowPos);
         HookIAT(GetModuleHandle(NULL), "user32.dll", "GetCursorPos", (PROC)fake_GetCursorPos);
+        HookIAT(GetModuleHandle(NULL), "user32.dll", "ShowCursor", (PROC)fake_ShowCursor);
     }
 }

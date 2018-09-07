@@ -29,7 +29,7 @@ int StretchToWidth = 0;
 int StretchToHeight = 0;
 
 static IDirectDrawImplVtbl Vtbl;
-static IDirectDrawImpl *ddraw;
+static IDirectDrawImpl *ddraw = NULL;
 
 IDirectDrawImpl *IDirectDrawImpl_construct()
 {
@@ -41,11 +41,15 @@ IDirectDrawImpl *IDirectDrawImpl_construct()
 
     this->ref++;
     timeBeginPeriod(1);
-    ddraw = this;
 
     this->glInfo.glSupported = false;
     this->glInfo.initialized = false;
     this->glInfo.pboSupported = false;
+
+    this->fakeCursor.hMutex = CreateMutex(NULL, FALSE, NULL);
+    this->fakeCursor.displayCount = 0;
+
+    ddraw = this;
 
     dprintf("<-- IDirectDraw::construct() -> %p\n", this);
     return this;
@@ -456,6 +460,8 @@ void SetWindowSize(IDirectDrawImpl *this, DWORD width, DWORD height)
 
     this->render.scaleW = ((float)this->render.viewport.width / this->width);
     this->render.scaleH = ((float)this->render.viewport.height / this->height);
+    this->render.unScaleW = ((float)this->width / this->render.viewport.width);
+    this->render.unScaleH = ((float)this->height / this->render.viewport.height);
 
     this->render.stretched =
         this->render.viewport.width != this->width ||
@@ -630,6 +636,49 @@ BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint)
     return ret;
 }
 
+int WINAPI fake_ShowCursor(BOOL bShow)
+{
+
+    if (ddraw == NULL)
+        return ShowCursor(bShow);
+
+    DWORD wfso;
+
+    if ( (wfso = WaitForSingleObject(ddraw->fakeCursor.hMutex, INFINITE)) != WAIT_OBJECT_0)
+    {
+        return ShowCursor(bShow);
+    }
+    int ret;
+
+    if (bShow)
+    {
+        ret = ShowCursor(bShow);
+        if (ret >= 0)
+        {
+            while (ShowCursor(false) >= 0);
+               //ddraw->fakeCursor.displayCount++;
+        }
+        ddraw->fakeCursor.displayCount = ret;
+        ddraw->fakeCursor.hCursor  = GetCursor();
+    }
+    else
+    {
+        /*if (ddraw->fakeCursor.displayCount >= 0)
+        {
+            ret = --ddraw->fakeCursor.displayCount;
+        }
+        else*/
+        {
+            ret = ShowCursor(bShow);
+            ddraw->fakeCursor.displayCount = ret;
+            ddraw->fakeCursor.hCursor  = GetCursor();
+        }
+    }
+    ReleaseMutex(ddraw->fakeCursor.hMutex);
+
+    return ret;
+}
+
 BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle)
 {
     RECT rc;
@@ -705,6 +754,53 @@ void center_mouse(HWND hWnd)
     SetCursorPos(size.right / 2 + pos.x, size.bottom / 2 + pos.y);
 }
 
+#define MAX_MANAGED_WINDOWS 1000
+ManagedWindow ManagedWindows[MAX_MANAGED_WINDOWS] = { 0 };
+
+LRESULT CALLBACK ChildWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        case WM_PARENTNOTIFY:
+        {
+            if (LOWORD(wParam) == WM_DESTROY)
+            {
+                HWND child = (HWND)lParam;
+                for (int i = 0; i < MAX_MANAGED_WINDOWS; ++i)
+                {
+                    if (ManagedWindows[i].valid && ManagedWindows[i].hWnd == hWnd)
+                    {
+                        ManagedWindows[i].valid = false;
+                        SetWindowLong(child, GWL_WNDPROC, (LONG)ManagedWindows[i].hWnd);
+                        break;
+                    }
+                }
+            }
+            if (LOWORD(wParam) == WM_CREATE)
+            {
+                HWND child = (HWND)lParam;
+                for (int i = 0; i < MAX_MANAGED_WINDOWS; ++i)
+                {
+                    if (!ManagedWindows[i].valid)
+                    {
+                        ManagedWindows[i].valid = true;
+                        ManagedWindows[i].hWnd = child;
+                        ManagedWindows[i].wndProc = (LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(child, GWL_WNDPROC);
+                        SetWindowLong(child, GWL_WNDPROC, (LONG)ChildWndProc);
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+    }
+    for (int i = 0; i < MAX_MANAGED_WINDOWS; ++i)
+    {
+        if (ManagedWindows[i].valid && ManagedWindows[i].hWnd == hWnd)
+            return CallWindowProc(ManagedWindows[i].wndProc, hWnd, uMsg, wParam, lParam);
+    }
+    return 0;
+}
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -722,7 +818,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_PARENTNOTIFY:
         {
             if (LOWORD(wParam) == WM_DESTROY)
+            {
                 redrawCount = 2;
+                HWND child = (HWND)lParam;
+                for (int i = 0; i < MAX_MANAGED_WINDOWS; ++i)
+                {
+                    if (ManagedWindows[i].valid && ManagedWindows[i].hWnd == hWnd)
+                    {
+                        ManagedWindows[i].valid = false;
+                        SetWindowLong(child, GWL_WNDPROC, (LONG)ManagedWindows[i].hWnd);
+                        break;
+                    }
+                }
+            }
+            if (LOWORD(wParam) == WM_CREATE)
+            {
+                HWND child = (HWND)lParam;
+                for (int i = 0; i < MAX_MANAGED_WINDOWS; ++i)
+                {
+                    if (!ManagedWindows[i].valid)
+                    {
+                        ManagedWindows[i].valid = true;
+                        ManagedWindows[i].hWnd = child;
+                        ManagedWindows[i].wndProc = (LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM))GetWindowLong(child, GWL_WNDPROC);
+                        SetWindowLong(child, GWL_WNDPROC, (LONG)ChildWndProc);
+                        break;
+                    }
+                }
+            }
             break;
         }
         case WM_PAINT:

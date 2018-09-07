@@ -69,7 +69,15 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
 
     }
 
-    BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
+    if (this->dd->render.stretched)
+    {
+        StretchBlt(hDC,       0, 0, size.right, size.bottom,
+                   this->hDC, pos.left * this->dd->render.scaleW,   pos.top * this->dd->render.scaleH,
+                              size.right * this->dd->render.scaleW, size.bottom * this->dd->render.scaleH,
+                   SRCCOPY);
+    }
+    else
+        BitBlt(hDC, 0, 0, size.right, size.bottom, this->hDC, pos.left, pos.top, SRCCOPY);
 
     if (this->usingPBO && renderer == RENDERER_OPENGL)
     {
@@ -219,12 +227,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             glBindBuffer(GL_ARRAY_BUFFER, 0);
 
             glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
-            static const GLfloat texCoord[] = {
-                0.0f, 0.0f,
-                1.0f, 0.0f,
-                1.0f, 1.0f,
-                0.0f, 1.0f,
-            };
+            static GLfloat texCoord[8] = { 0 };
+
+            texCoord[2] = this->dd->render.unScaleW;
+            texCoord[4] = this->dd->render.unScaleW;
+            texCoord[5] = this->dd->render.unScaleH;
+            texCoord[7] = this->dd->render.unScaleH;
+
             glBufferData(GL_ARRAY_BUFFER, sizeof(texCoord), texCoord, GL_STATIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -540,10 +549,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                 LeaveCriticalSection(&this->lock);
 
-                if (ShouldStretch(this))
+                /*if (ShouldStretch(this)) FIXME
                     glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->dd->render.viewport.height,
                         this->dd->render.viewport.width, this->dd->render.viewport.height);
-                else
+                else*/
                     glViewport(-this->dd->winRect.left, this->dd->winRect.bottom - this->height, this->width, this->height);
 
                 if (convProgram)
@@ -555,13 +564,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 else
                 {
                     glBegin(GL_TRIANGLE_FAN);
-                    glTexCoord2f(0, 0); glVertex2f(-1, 1);
-                    glTexCoord2f(1, 0); glVertex2f(1, 1);
-                    glTexCoord2f(1, 1); glVertex2f(1, -1);
-                    glTexCoord2f(0, 1); glVertex2f(-1, -1);
+                    glTexCoord2f(0, 0);                          glVertex2f(-1, 1);
+                    glTexCoord2f(this->dd->render.unScaleW, 0);  glVertex2f(1, 1);
+                    glTexCoord2f(this->dd->render.unScaleW,
+                                 this->dd->render.unScaleH);     glVertex2f(1, -1);
+                    glTexCoord2f(0, this->dd->render.unScaleH);  glVertex2f(-1, -1);
                     glEnd();
                 }
-
 
                 SwapBuffers(this->dd->hDC);
 
@@ -591,6 +600,21 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
 
             EnumChildWindows(this->dd->hWnd, EnumChildProc, (LPARAM)this);
+            if (WaitForSingleObject(this->dd->fakeCursor.hMutex, INFINITE) == WAIT_OBJECT_0)
+            {
+                if (this->dd->fakeCursor.displayCount >= 0)
+                {
+                    printf("faking cursor\n");
+                    POINT point;
+                    GetCursorPos(&point);
+                    DrawIcon(this->dd->hDC, (int)(point.x * this->dd->render.scaleW),
+                             (int)(point.y * this->dd->render.scaleH),
+                             this->dd->fakeCursor.hCursor);
+                    printf("drawCursor (%d, %d)\n", (int)(point.x * this->dd->render.scaleW),
+                           (int)(point.y * this->dd->render.scaleH));
+                }
+                ReleaseMutex(this->dd->fakeCursor.hMutex);
+            }
         }
 
         tick_time = CounterGet(&renderCounter);

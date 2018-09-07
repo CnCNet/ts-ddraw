@@ -33,6 +33,7 @@ extern int StretchToHeight;
 BOOL WINAPI fake_SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 BOOL WINAPI fake_MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint);
 BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint);
+int  WINAPI fake_ShowCursor(BOOL bShow);
 
 BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle);
 
@@ -99,6 +100,8 @@ struct IDirectDrawImpl
         int height;
         float scaleH;
         float scaleW;
+        float unScaleW;
+        float unScaleH;
         struct { int width; int height; int x; int y; } viewport;
 
     } render;
@@ -121,7 +124,20 @@ struct IDirectDrawImpl
     LONG edgeDimension;
     LONG edgeValue;
     LONG edgeTimeoutMs;
+
+    struct
+    {
+        HCURSOR hCursor;
+        int displayCount;
+        HANDLE hMutex;
+    } fakeCursor;
 };
+
+typedef struct ManagedWindow {
+    bool valid;
+    HWND hWnd;
+    LRESULT (CALLBACK *wndProc)(HWND, UINT, WPARAM, LPARAM);
+} ManagedWindow;
 
 #define EDGE_NULL 1
 #define EDGE_X 2

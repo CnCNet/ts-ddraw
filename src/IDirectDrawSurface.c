@@ -289,7 +289,7 @@ static HRESULT __stdcall _Blt(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, L
 
             if (dst_w == src_w && dst_h == src_h)
             {
-                if (this->usingPBO)
+                if (this->usingPBO && this->surface != NULL && srcImpl != NULL)
                 {
                     // Sometimes radar surface will have an odd lPitch, BitBlt won't work in those cases
                     uint8_t *dest_base = (uint8_t*)this->surface + (dst.left * this->lXPitch) + (this->lPitch * dst.top);
