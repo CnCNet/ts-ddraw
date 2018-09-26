@@ -26,6 +26,18 @@ const GLchar *PassthroughVertShaderSrc =
     "    TEX0.xy = TexCoord.xy;\n"
     "}\n";
 
+const GLchar *PassthroughFragShaderSrc =
+    "#version 130\n"
+    "out vec4 FragColor;\n"
+    "uniform sampler2D SurfaceTex;\n"
+    "in vec4 TEX0;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    vec4 texel = texture(SurfaceTex, TEX0.xy);\n"
+    "    FragColor = texel;\n"
+    "}\n";
+
 const GLchar *ConvFragShaderSrc =
     "#version 130\n"
     "out vec4 FragColor;\n"
@@ -135,15 +147,21 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         if (gle != GL_NO_ERROR)
             dprintf("wglSwapIntervalEXT, %x\n", gle);
 
+        char *glversion = (char *)glGetString(GL_VERSION);
 
         gotOpenglV3 = glGenFramebuffers && glBindFramebuffer && glFramebufferTexture2D && glDrawBuffers &&
             glCheckFramebufferStatus && glUniform4f && glActiveTexture && glUniform1i &&
             glGetAttribLocation && glGenBuffers && glBindBuffer && glBufferData && glVertexAttribPointer &&
             glEnableVertexAttribArray && glUniform2fv && glUniformMatrix4fv && glGenVertexArrays && glBindVertexArray &&
-            glGetUniformLocation;
+            glGetUniformLocation && glversion && glversion[0] != '2';
 
-        if (gotOpenglV3 && ConvertOnGPU)
-            convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
+        if (gotOpenglV3)
+        {
+            if (ConvertOnGPU)
+                convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
+            else
+                convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, PassthroughFragShaderSrc);
+        }
 
         glGenTextures(2, &this->textures[0]);
 
@@ -159,7 +177,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             if (gle != GL_NO_ERROR)
                 dprintf("glBindTexture, %x\n", gle);
 
-            if (convProgram)
+            if (convProgram && ConvertOnGPU)
             {
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, this->width, this->height, 0, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE, NULL);
                 if (glGetError() != GL_NO_ERROR)
@@ -248,8 +266,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             };
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-            glBindVertexArray(0);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            //glBindVertexArray(0);
 
             static const float mvpMatrix[16] = {
                 1,0,0,0,
@@ -548,9 +565,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
                 if (convProgram)
                 {
-                    glBindVertexArray(vao);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-                    glBindVertexArray(0);
                 }
                 else
                 {
