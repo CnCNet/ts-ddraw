@@ -297,7 +297,7 @@ BOOL TextureUploadTest(int width, int height, GLint internalFormat, GLenum forma
     BOOL result = TRUE;
     GLenum gle = GL_NO_ERROR;
 
-    static char testData[] = { 0,1,2,0,0,2,3,0,0,4,5,0,0,6,7,0,0,8,9,0 };
+    char testData[] = { 0,1,2,0,0,2,3,0,0,4,5,0,0,6,7,0,0,8,9,0 };
     void *textureBuffer = calloc(1, 2 * width * height);
 
     GLuint texID;
@@ -309,6 +309,7 @@ BOOL TextureUploadTest(int width, int height, GLint internalFormat, GLenum forma
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, textureBuffer);
     if ((gle = glGetError()) != GL_NO_ERROR)
     {
+        dprintf("glTexImage2D, %x\n", gle);
         result = FALSE;
         goto finish;
     }
@@ -320,6 +321,7 @@ BOOL TextureUploadTest(int width, int height, GLint internalFormat, GLenum forma
     glGetTexImage(GL_TEXTURE_2D, 0, format, type, textureBuffer);
     if ((gle = glGetError()) != GL_NO_ERROR)
     {
+        dprintf("glGetTexImage, %x\n", gle);
         result = FALSE;
         goto finish;
     }
@@ -327,9 +329,13 @@ BOOL TextureUploadTest(int width, int height, GLint internalFormat, GLenum forma
     glFinish();
 
     if (memcmp(textureBuffer, testData, sizeof(testData)) != 0)
+    {
+        dprintf("memcmp(textureBuffer, testData) failed: %x <> %x\n", *(int32_t*)textureBuffer, *(int32_t*)testData);
         result = FALSE;
+    }
 
  finish:
+    glBindTexture(GL_TEXTURE_2D,0);
     glDeleteTextures(1, &texID);
     free(textureBuffer);
     return result;
@@ -374,7 +380,9 @@ BOOL ShaderTest(GLuint convProgram, int width, int height, GLint internalFormat,
             line[x] = inTestData[i++];
         }
     }
-
+    GLboolean swapp;
+    glGetBooleanv(GL_UNPACK_SWAP_BYTES, &swapp);
+    glPixelStorei(GL_UNPACK_SWAP_BYTES, 1);
     glGenTextures(1, &texID);
     glBindTexture(GL_TEXTURE_2D, texID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -425,10 +433,11 @@ BOOL ShaderTest(GLuint convProgram, int width, int height, GLint internalFormat,
 
         glFinish();
 
-        int colors[] = { RGBA_RED, RGBA_BLUE, RGBA_GREEN, RGBA_ALPHA };
+        int colors[] = { RGBA_RED, RGBA_GREEN, RGBA_BLUE, RGBA_ALPHA };
 #ifdef _DEBUG
-        char *colorNames[] = { "RGBA_RED", "RGBA_BLUE", "RGBA_GREEN", "RGBA_ALPHA" };
+        char *colorNames[] = { "RGBA_RED", "RGBA_GREEN", "RGBA_BLUE", "RGBA_ALPHA" };
 #endif
+        dprintf("data = %x (%x, %x, %x, %x, %x)\n", *(uint32_t*)outBuffer, outBuffer[0], outBuffer[1], outBuffer[2], outBuffer[3], outBuffer[4]);
         for (int i = 0; i < sizeof(outTestData)/sizeof(outTestData[0]); ++i)
         {
             bool failed = false;
@@ -458,6 +467,7 @@ BOOL ShaderTest(GLuint convProgram, int width, int height, GLint internalFormat,
     }
 
 finish:
+    glPixelStorei(GL_UNPACK_SWAP_BYTES, swapp);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

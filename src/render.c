@@ -166,6 +166,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
         dprintf("Renderer: Surface dimensions (%d, %d)\n", this->width, this->height);
         int v = this->width;
+        // A trick: v will be set to a power of 2
         v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++;
         this->textureWidth = v;
 
@@ -177,6 +178,8 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         ScaleH = (float)this->height / this->textureHeight;
         dprintf("Renderer: Texture dimensions (%d, %d)\n", this->textureWidth, this->textureHeight);
 
+        int i;
+setup_shaders:
         if (convProgram)
         {
             glUseProgram(convProgram);
@@ -241,7 +244,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
         if (gle != GL_NO_ERROR)
             dprintf("glGenTextures, %x\n", gle);
 
-        for (int i = 0; i < 2; i++)
+        for (i = 0; i < 2; i++)
         {
             glBindTexture(GL_TEXTURE_2D, this->textures[i]);
 
@@ -256,14 +259,21 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     !ShaderTest(convProgram, this->textureWidth, this->textureHeight, texInternal, texFormat, texType))
                 {
                     convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, PassthroughFragShaderSrc);
+                    //Prevent infinite loop by setting ConvertOnGPU
                     ConvertOnGPU = false;
-                    goto no_shader;
+                    glDeleteTextures(2,this->textures);
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                    glDeleteBuffers(3, vaoBuffers);
+                    glDeleteVertexArrays(1, &vao);
+                    glBindVertexArray(0);
+                    glUseProgram(0);
+                    glGetError();
+                    goto setup_shaders;
                 }
                 dprintf("Renderer: Converting on GPU\n");
             }
             else
             {
-            no_shader:
                 if (!TextureUploadTest(this->textureWidth, this->textureHeight,
                                        texInternal = GL_RGB565, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5)
                     &&
