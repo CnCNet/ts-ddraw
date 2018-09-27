@@ -52,7 +52,7 @@ const GLchar *ConvFragShaderSrc =
     "    colors.r = float(bytes >> 11) / 31.0;\n"
     "    colors.g = float((bytes >> 5) & 63) / 63.0;\n"
     "    colors.b = float(bytes & 31) / 31.0;\n"
-    "    colors.a = 0;\n"
+    "    colors.a = 0.0;\n"
     "    FragColor = colors;\n"
     "}\n";
 
@@ -116,7 +116,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     bool failToGDI = false;
     BOOL gotOpenglV3;
     GLuint convProgram = 0;
-    GLenum texFormat = GL_RGB, texType = GL_RGB;
+    GLenum texFormat = GL_RGB, texType = GL_RGB, texInternal = GL_RG8;
     GLuint vao, vaoBuffers[3];
     GLint vertexCoordAttrLoc, texCoordAttrLoc;
 
@@ -160,61 +160,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             if (ConvertOnGPU)
                 convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
             else
-                convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, PassthroughFragShaderSrc);
-        }
-
-        glGenTextures(2, &this->textures[0]);
-
-        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-        if (gle != GL_NO_ERROR)
-            dprintf("glGenTextures, %x\n", gle);
-
-        for (int i = 0; i < 2; i++)
-        {
-            glBindTexture(GL_TEXTURE_2D, this->textures[i]);
-
-            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-            if (gle != GL_NO_ERROR)
-                dprintf("glBindTexture, %x\n", gle);
-
-            if (convProgram && ConvertOnGPU)
-            {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, this->width, this->height, 0, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE, NULL);
-                if (glGetError() != GL_NO_ERROR)
-                {
-                    convProgram = 0;
-                    goto no_shader;
-                }
-            }
-            else
-            {
-            no_shader:
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
-                if ((gle = glGetError()) != GL_NO_ERROR)
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, this->width, this->height, 0, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5, NULL);
-            }
-
-            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-            if (gle != GL_NO_ERROR)
-                dprintf("glTexImage2D i = %d, %x\n", i, gle);
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-            if (gle != GL_NO_ERROR)
-                dprintf("glTexParameteri MIN, %x\n", gle);
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
-            if (gle != GL_NO_ERROR)
-                dprintf("glTexParameteri MAG, %x\n", gle);
-
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-
-            if (gle != GL_NO_ERROR)
-                dprintf("glTexParameteri MAX, %x\n", gle);
+                convProgram = 0;
         }
 
         if (convProgram)
@@ -266,8 +212,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             };
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-            //glBindVertexArray(0);
-
             static const float mvpMatrix[16] = {
                 1,0,0,0,
                 0,1,0,0,
@@ -276,7 +220,78 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             };
             glUniformMatrix4fv(glGetUniformLocation(convProgram, "MVPMatrix"), 1, GL_FALSE, mvpMatrix);
         }
-        else
+
+        glGenTextures(2, &this->textures[0]);
+
+        failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+        if (gle != GL_NO_ERROR)
+            dprintf("glGenTextures, %x\n", gle);
+
+        for (int i = 0; i < 2; i++)
+        {
+            glBindTexture(GL_TEXTURE_2D, this->textures[i]);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glBindTexture, %x\n", gle);
+
+            if (convProgram && ConvertOnGPU)
+            {
+                if (!TextureUploadTest(this->width, this->height, texInternal = GL_RG8, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE)
+                    ||
+                    !ShaderTest(convProgram, this->width, this->height, texInternal, texFormat, texType))
+                {
+                    convProgram = 0;
+                    ConvertOnGPU = false;
+                    goto no_shader;
+                }
+                dprintf("Renderer: Converting on GPU\n");
+            }
+            else
+            {
+            no_shader:
+                if (!TextureUploadTest(this->width,this->height, texInternal = GL_RGB565, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5)
+                    &&
+                    !TextureUploadTest(this->width,this->height, texInternal = GL_RGB5, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5))
+                {
+
+                    failToGDI = true;
+                    dprintf("All texture uploads have failed\n");
+                }
+            }
+
+            glBindTexture(GL_TEXTURE_2D, this->textures[i]);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glBindTexture, %x\n", gle);
+
+            glTexImage2D(GL_TEXTURE_2D, 0, texInternal, this->width, this->height, 0, texFormat, texType, NULL);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexImage2D i = %d, %x\n", i, gle);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexParameteri MIN, %x\n", gle);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+            failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexParameteri MAG, %x\n", gle);
+
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
+            if (gle != GL_NO_ERROR)
+                dprintf("glTexParameteri MAX, %x\n", gle);
+        }
+
+        if (!convProgram)
             glEnable(GL_TEXTURE_2D);
 
         failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);

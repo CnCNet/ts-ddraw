@@ -7,6 +7,8 @@ void OpenGL_Init();
 BOOL OpenGL_ExtExists(char *ext, HDC hdc);
 GLuint OpenGL_BuildProgram(const GLchar *vertSource, const GLchar *fragSource);
 GLuint OpenGL_BuildProgramFromFile(const char *filePath);
+BOOL TextureUploadTest(int width, int height, GLint internalFormat, GLenum format, GLenum type);
+BOOL ShaderTest(GLuint convProgram, int width, int height, GLint internalFormat, GLenum format, GLenum type);
 
 extern PFNWGLSWAPINTERVALEXT wglSwapIntervalEXT;
 

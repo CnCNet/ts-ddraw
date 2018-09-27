@@ -24,7 +24,7 @@ void SettingsLoad()
 
     PrimarySurface2Tex = GetBool("PrimarySurface2Tex", PrimarySurface2Tex);
     GlFinish = GetBool("GlFinish", GlFinish);
-    ConvertOnGPU = GetBool("ConvertOnGPU", !IsWine());
+    ConvertOnGPU = GetBool("ConvertOnGPU", true);
 
     TargetFPS = (double)GetInt("TargetFPS", (int)TargetFPS);
     TargetFrameLen = 1000.0 / TargetFPS;

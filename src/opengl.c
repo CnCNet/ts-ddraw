@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include "opengl.h"
-
+#include "main.h"
 
 // Program
 PFNGLCREATEPROGRAMPROC glCreateProgram = NULL;
@@ -289,4 +289,185 @@ GLuint OpenGL_BuildProgramFromFile(const char *filePath)
     }
 
     return program;
+}
+
+BOOL TextureUploadTest(int width, int height, GLint internalFormat, GLenum format, GLenum type)
+{
+    BOOL result = TRUE;
+    GLenum gle = GL_NO_ERROR;
+
+    static char testData[] = { 0,1,2,0,0,2,3,0,0,4,5,0,0,6,7,0,0,8,9,0 };
+    void *textureBuffer = calloc(1, 2 * width * height);
+
+    GLuint texID;
+
+    memcpy(textureBuffer, testData, sizeof(testData));
+
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, textureBuffer);
+    if ((gle = glGetError()) != GL_NO_ERROR)
+    {
+        result = FALSE;
+        goto finish;
+    }
+
+    glFinish();
+
+    memset(textureBuffer, 0, sizeof(testData));
+
+    glGetTexImage(GL_TEXTURE_2D, 0, format, type, textureBuffer);
+    if ((gle = glGetError()) != GL_NO_ERROR)
+    {
+        result = FALSE;
+        goto finish;
+    }
+
+    glFinish();
+
+    if (memcmp(textureBuffer, testData, sizeof(testData)) != 0)
+        result = FALSE;
+
+ finish:
+    glDeleteTextures(1, &texID);
+    free(textureBuffer);
+    return result;
+}
+
+#define U565_RED 11
+#define U565_GREEN 5
+#define U565_BLUE 0
+#define RGBA_RED 0
+#define RGBA_BLUE 16
+#define RGBA_GREEN 8
+#define RGBA_ALPHA 24
+
+BOOL ShaderTest(GLuint convProgram, int width, int height, GLint internalFormat, GLenum format, GLenum type)
+{
+    dprintf("--> ShaderTest(%d, %d, %d, %d, %d, %d)\n", convProgram, width, height, internalFormat, format, type);
+    BOOL result = TRUE;
+    GLenum gle = GL_NO_ERROR;
+    BOOL setupFailed = FALSE;
+
+    uint16_t inTestData[] = { 16 << U565_RED, 32 << U565_GREEN, 16 << U565_BLUE,
+        (16 << U565_RED) | (32 << U565_GREEN) | (16 << U565_BLUE) };
+
+
+    uint32_t outTestData[] = { 128 << RGBA_RED, 128 << RGBA_GREEN, 128 << RGBA_BLUE,
+        (128 << RGBA_RED) | (128 << RGBA_GREEN) | (128 << RGBA_BLUE) };
+
+    uint16_t *inBuffer = (uint16_t*)calloc(1, 2 * width * height);
+    uint32_t *outBuffer = (uint32_t*)calloc(1, 4 * width * height);
+
+    GLuint texID, fboId, fboTexId;
+
+    gle = glGetError();
+
+    for (int y = 0; y < height; ++y)
+    {
+        uint16_t *line = inBuffer + y * width;
+        for (int x = 0, i = 0; x < width; ++x)
+        {
+            if (i >= sizeof(inTestData)/sizeof(inTestData[0]))
+                i = 0;
+            line[x] = inTestData[i++];
+        }
+    }
+
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, inBuffer);
+    if ((gle = glGetError()) != GL_NO_ERROR)
+    {
+        dprintf("glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, inBuffer), %x\n", gle);
+        setupFailed = TRUE;
+    }
+
+    glGenFramebuffers(1, &fboId);
+    glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+
+    glGenTextures(1, &fboTexId);
+    glBindTexture(GL_TEXTURE_2D, fboTexId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, outBuffer);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexId, 0);
+
+    GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+    glDrawBuffers(1, drawBuffers);
+    if ((gle = glGetError()) != GL_NO_ERROR)
+        dprintf("glDrawBuffers, %x\n", gle);
+
+    if (setupFailed)
+    {
+        result = FALSE;
+        goto finish;
+    }
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE)
+    {
+        glViewport(0, 0, width, height);
+
+        glUseProgram(convProgram);
+        glBindTexture(GL_TEXTURE_2D, texID);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+        glFinish();
+
+        memset(outBuffer, 0, 4 * width * height);
+
+        glBindTexture(GL_TEXTURE_2D, fboTexId);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, outBuffer);
+
+        glFinish();
+
+        int colors[] = { RGBA_RED, RGBA_BLUE, RGBA_GREEN, RGBA_ALPHA };
+#ifdef DEBUG
+        char *colorNames[] = { "RGBA_RED", "RGBA_BLUE", "RGBA_GREEN", "RGBA_ALPHA" };
+#endif
+        for (int i = 0; i < sizeof(outTestData)/sizeof(outTestData[0]); ++i)
+        {
+            bool failed = false;
+            for (int c = 0; c < sizeof(colors)/sizeof(colors[0]); ++c)
+            {
+                if ((int)(outBuffer[i] >> colors[c] & 0xff) > (int)(outTestData[i] >> colors[c] & 0xff) + 5
+                    || (int)(outBuffer[i] >> colors[c] & 0xff) < (int)(outTestData[i] >> colors[c] & 0xff) - 5)
+                {
+                    dprintf("Shader failed at %d with color %s, expected (%d - %d) got %d\n", i, colorNames[c],
+                            (outTestData[i] >> colors[c] & 0xff) - 5,
+                            (outTestData[i] >> colors[c] & 0xff) + 5,
+                            (outBuffer[i] >> colors[c] & 0xff));
+                    failed = true;
+                }
+            }
+            if (failed)
+            {
+                result = FALSE;
+                break;
+            }
+        }
+    }
+    else
+    {
+        dprintf("glCheckFramebufferStatus(GL_FRAMEBUFFER) failed\n");
+        result = FALSE;
+    }
+
+finish:
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &fboId);
+
+    glDeleteTextures(1, &texID);
+    glDeleteTextures(1, &fboTexId);
+
+    free(inBuffer);
+    free(outBuffer);
+
+    dprintf("<-- ShaderTest(%d, %d, %d, %d, %d, %d) %d\n", convProgram, width, height, internalFormat, format, type, result);
+    return result;
 }
