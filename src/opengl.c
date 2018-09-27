@@ -356,12 +356,8 @@ BOOL ShaderTest(GLuint convProgram, int width, int height, GLint internalFormat,
     GLenum gle = GL_NO_ERROR;
     BOOL setupFailed = FALSE;
 
-    uint16_t inTestData[] = { 16 << U565_RED, 32 << U565_GREEN, 16 << U565_BLUE,
-        (16 << U565_RED) | (32 << U565_GREEN) | (16 << U565_BLUE) };
-
-
-    uint32_t outTestData[] = { 128 << RGBA_RED, 128 << RGBA_GREEN, 128 << RGBA_BLUE,
-        (128 << RGBA_RED) | (128 << RGBA_GREEN) | (128 << RGBA_BLUE) };
+    uint16_t inTestData[] = { (16 << U565_RED) | (32 << U565_GREEN) | (16 << U565_BLUE) };
+    uint32_t outTestData[] = { (128 << RGBA_RED) | (128 << RGBA_GREEN) | (128 << RGBA_BLUE) };
 
     uint16_t *inBuffer = (uint16_t*)calloc(1, 2 * width * height);
     uint32_t *outBuffer = (uint32_t*)calloc(1, 4 * width * height);
