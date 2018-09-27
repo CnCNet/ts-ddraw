@@ -67,6 +67,8 @@ struct IDirectDrawSurfaceImpl
     void *systemSurface;
     void *pboSurface;
     GLuint textures[2];
+    int textureWidth;
+    int textureHeight;
 };
 
 struct IDirectDrawSurfaceImplVtbl

@@ -119,6 +119,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     GLenum texFormat = GL_RGB, texType = GL_RGB, texInternal = GL_RG8;
     GLuint vao, vaoBuffers[3];
     GLint vertexCoordAttrLoc, texCoordAttrLoc;
+    float ScaleW = 1.0, ScaleH = 1.0;
 
     if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
     {
@@ -160,8 +161,21 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             if (ConvertOnGPU)
                 convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, ConvFragShaderSrc);
             else
-                convProgram = 0;
+                convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, PassthroughFragShaderSrc);
         }
+
+        dprintf("Renderer: Surface dimensions (%d, %d)\n", this->width, this->height);
+        int v = this->width;
+        v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++;
+        this->textureWidth = v;
+
+        v = this->height;
+        v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++;
+        this->textureHeight = v;
+
+        ScaleW = (float)this->width / this->textureWidth;
+        ScaleH = (float)this->height / this->textureHeight;
+        dprintf("Renderer: Texture dimensions (%d, %d)\n", this->textureWidth, this->textureHeight);
 
         if (convProgram)
         {
@@ -173,21 +187,21 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             glGenBuffers(3, vaoBuffers);
 
             glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[0]);
-            static const GLfloat vertexCoord[] = {
+            GLfloat vertexCoord[] = {
                 -1.0f, 1.0f,
-                1.0f, 1.0f,
-                1.0f,-1.0f,
+                 1.0f, 1.0f,
+                 1.0f,-1.0f,
                 -1.0f,-1.0f,
             };
             glBufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
 
             glBindBuffer(GL_ARRAY_BUFFER, vaoBuffers[1]);
-            static const GLfloat texCoord[] = {
-                0.0f, 0.0f,
-                1.0f, 0.0f,
-                1.0f, 1.0f,
-                0.0f, 1.0f,
+            GLfloat texCoord[] = {
+                0.0f  , 0.0f,
+                ScaleW, 0.0f,
+                ScaleW, ScaleH,
+                0.0f,   ScaleH,
             };
             glBufferData(GL_ARRAY_BUFFER, sizeof(texCoord), texCoord, GL_STATIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -206,13 +220,13 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             glBindBuffer(GL_ARRAY_BUFFER, 0);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vaoBuffers[2]);
-            static const GLushort indices[] = {
+            GLushort indices[] = {
                 0, 1, 2,
                 0, 2, 3,
             };
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-            static const float mvpMatrix[16] = {
+            float mvpMatrix[16] = {
                 1,0,0,0,
                 0,1,0,0,
                 0,0,1,0,
@@ -237,11 +251,11 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
             if (convProgram && ConvertOnGPU)
             {
-                if (!TextureUploadTest(this->width, this->height, texInternal = GL_RG8, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE)
+                if (!TextureUploadTest(this->textureWidth, this->textureHeight, texInternal = GL_RG8, texFormat = GL_RG, texType = GL_UNSIGNED_BYTE)
                     ||
-                    !ShaderTest(convProgram, this->width, this->height, texInternal, texFormat, texType))
+                    !ShaderTest(convProgram, this->textureWidth, this->textureHeight, texInternal, texFormat, texType))
                 {
-                    convProgram = 0;
+                    convProgram = OpenGL_BuildProgram(PassthroughVertShaderSrc, PassthroughFragShaderSrc);
                     ConvertOnGPU = false;
                     goto no_shader;
                 }
@@ -250,9 +264,11 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             else
             {
             no_shader:
-                if (!TextureUploadTest(this->width,this->height, texInternal = GL_RGB565, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5)
+                if (!TextureUploadTest(this->textureWidth, this->textureHeight,
+                                       texInternal = GL_RGB565, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5)
                     &&
-                    !TextureUploadTest(this->width,this->height, texInternal = GL_RGB5, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5))
+                    !TextureUploadTest(this->textureWidth, this->textureHeight,
+                                       texInternal = GL_RGB5, texFormat = GL_RGB, texType = GL_UNSIGNED_SHORT_5_6_5))
                 {
 
                     failToGDI = true;
@@ -266,7 +282,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             if (gle != GL_NO_ERROR)
                 dprintf("glBindTexture, %x\n", gle);
 
-            glTexImage2D(GL_TEXTURE_2D, 0, texInternal, this->width, this->height, 0, texFormat, texType, NULL);
+            glTexImage2D(GL_TEXTURE_2D, 0, texInternal, this->textureWidth, this->textureHeight, 0, texFormat, texType, NULL);
 
             failToGDI = failToGDI || ((gle = glGetError()) != GL_NO_ERROR);
             if (gle != GL_NO_ERROR)
@@ -543,7 +559,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);
 
                     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->width, this->height, texFormat, texType, 0);
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, this->textureWidth, this->textureHeight, texFormat, texType, 0);
 
                     this->pboIndex++;
                     if (this->pboIndex >= this->pboCount)
@@ -585,10 +601,10 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
                 else
                 {
                     glBegin(GL_TRIANGLE_FAN);
-                    glTexCoord2f(0, 0); glVertex2f(-1, 1);
-                    glTexCoord2f(1, 0); glVertex2f(1, 1);
-                    glTexCoord2f(1, 1); glVertex2f(1, -1);
-                    glTexCoord2f(0, 1); glVertex2f(-1, -1);
+                    glTexCoord2f(0, 0);           glVertex2f(-1, 1);
+                    glTexCoord2f(ScaleW, 0);      glVertex2f(1, 1);
+                    glTexCoord2f(ScaleW, ScaleH); glVertex2f(1, -1);
+                    glTexCoord2f(0, ScaleH);      glVertex2f(-1, -1);
                     glEnd();
                 }
 
