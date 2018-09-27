@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "opengl.h"
 #include "main.h"
 
@@ -425,7 +426,7 @@ BOOL ShaderTest(GLuint convProgram, int width, int height, GLint internalFormat,
         glFinish();
 
         int colors[] = { RGBA_RED, RGBA_BLUE, RGBA_GREEN, RGBA_ALPHA };
-#ifdef DEBUG
+#ifdef _DEBUG
         char *colorNames[] = { "RGBA_RED", "RGBA_BLUE", "RGBA_GREEN", "RGBA_ALPHA" };
 #endif
         for (int i = 0; i < sizeof(outTestData)/sizeof(outTestData[0]); ++i)
