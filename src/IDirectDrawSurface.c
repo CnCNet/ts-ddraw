@@ -147,7 +147,7 @@ static HRESULT __stdcall _QueryInterface(IDirectDrawSurfaceImpl *this, REFIID ri
 static ULONG __stdcall _AddRef(IDirectDrawSurfaceImpl *this)
 {
     dprintf("IDirectDrawSurface::AddRef(this=%p) -> %d\n", this, this->ref);
-    return this->ref;
+    return ++this->ref;
 }
 
 static ULONG __stdcall _Release(IDirectDrawSurfaceImpl *this)
