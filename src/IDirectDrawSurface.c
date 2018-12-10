@@ -114,6 +114,8 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
 
         dprintf("Starting renderer.\n");
         this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
+        SetThreadAffinityMask(this->thread, SystemAffinity);
+
         if (SetThreadPriority(this->thread, THREAD_PRIORITY_ABOVE_NORMAL))
         {
             dprintf("Renderer set to higher priority.\n");

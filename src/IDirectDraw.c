@@ -18,6 +18,7 @@
 #include "IDirectDraw.h"
 #include "IDirectDrawClipper.h"
 #include "IDirectDrawSurface.h"
+#include <tlhelp32.h>
 
  // use these to enable stretching for testing
  // works only fullscreen right now
@@ -1058,6 +1059,31 @@ static HRESULT __stdcall _SetCooperativeLevel(IDirectDrawImpl *this, HWND hWnd, 
             ClientToScreen(this->hWnd, &p);
             GetClientRect(this->hWnd, &this->winRect);
             OffsetRect(&this->winRect, p.x, p.y);
+
+            if (SystemAffinity && ProcAffinity)
+            {
+                /* Sets all the threads of this process to CPU 1 */
+                HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
+                DWORD dwOwnerPID = GetCurrentProcessId();
+                THREADENTRY32 te32;
+                te32.dwSize = sizeof(THREADENTRY32 );
+
+                // Take a snapshot of all running threads
+                hThreadSnap = CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
+                if( hThreadSnap != INVALID_HANDLE_VALUE && Thread32First( hThreadSnap, &te32 ) )
+                {
+                    do
+                    {
+                        if( te32.th32OwnerProcessID == dwOwnerPID )
+                        {
+                            HANDLE thread = OpenThread(THREAD_ALL_ACCESS, FALSE, te32.th32ThreadID);
+                            if (thread)
+                                SetThreadAffinityMask(thread, ProcAffinity);
+                        }
+                    } while( Thread32Next(hThreadSnap, &te32 ) );
+                }
+                CloseHandle( hThreadSnap );
+            }
         }
     }
 

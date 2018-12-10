@@ -54,6 +54,8 @@ bool GlFinish = false;
 LONG MonitorEdgeTimer = 0;
 bool ThreadSafe = false;
 bool ConvertOnGPU = true;
+DWORD SystemAffinity = 0;
+DWORD ProcAffinity = 0;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {

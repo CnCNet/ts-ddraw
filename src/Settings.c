@@ -36,17 +36,39 @@ void SettingsLoad()
 
     InterlockedExchange(&PrimarySurfacePBO, GetInt("PrimarySurfacePBO", PrimarySurfacePBO));
 
-    if (( SingleProcAffinity = GetBool("SingleProcAffinity", !ThreadSafe) ))
+    char value[8] = {0};
+    GetString("SingleProcAffinity", "", value, 8);
+
+    SingleProcAffinity = GetBool("SingleProcAffinity", !ThreadSafe);
+    char singProc = value[0] ? (SingleProcAffinity ? 1 : 0) : -1;
+
+    HANDLE proc = GetCurrentProcess();
+    GetProcessAffinityMask(proc, &ProcAffinity, &SystemAffinity);
+
+    switch (singProc)
     {
+    case -1:
+        // If SingleProcAffinity wasn't set
+        if (GetProcessAffinityMask(proc, &ProcAffinity, &SystemAffinity))
+        {
+            if (ProcAffinity != SystemAffinity)
+                SetProcessAffinityMask(proc, SystemAffinity);
+            else
+                ProcAffinity = SystemAffinity = 0;
+        }
+        break;
+
+    case 1:
+        // If SingleProcAffinity was set to Yes
         SetProcessAffinityMask(GetCurrentProcess(), 1);
-    }
-    else
-    {
-        DWORD systemAffinity;
-        DWORD procAffinity;
-        HANDLE proc = GetCurrentProcess();
-        if (GetProcessAffinityMask(proc, &procAffinity, &systemAffinity))
-            SetProcessAffinityMask(proc, systemAffinity);
+        ProcAffinity = SystemAffinity = 0;
+        break;
+
+    case 0:
+        // If SingleProcAffinit was set to No
+        SetProcessAffinityMask(GetCurrentProcess(), SystemAffinity);
+        SystemAffinity = ProcAffinity = 0;
+        break;
     }
 
     MonitorEdgeTimer = GetInt("MonitorEdgeTimer", MonitorEdgeTimer);
