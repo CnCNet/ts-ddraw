@@ -749,8 +749,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
                 {
                     fsActive = true;
+                    this->lpVtbl->SetDisplayMode(this, this->mode.dmPelsWidth, this->mode.dmPelsHeight, this->bpp);
                     ShowWindow(this->hWnd, SW_RESTORE);
-                    ChangeDisplaySettings(&this->mode, CDS_FULLSCREEN);
                     mouse_lock(this);
                     InterlockedExchange(&this->dd->focusGained, true);
                 }
