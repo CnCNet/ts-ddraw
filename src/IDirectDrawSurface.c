@@ -68,7 +68,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
     this->lPitch = this->width * this->lXPitch;
 
     /* Tiberian Sun sometimes tries to access lines that are past the bottom of the screen */
-    int guardLines = 0; // doesn't work (yet)
+    int guardLines = 200;
 
     this->hDC = CreateCompatibleDC(this->dd->hDC);
 
@@ -100,6 +100,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
 
     this->bitmap = CreateDIBSection(this->hDC, this->bmi, DIB_RGB_COLORS, (void **)&this->surface, NULL, 0);
     this->defaultBM = SelectObject(this->hDC, this->bitmap);
+    this->bmi->bmiHeader.biHeight = -this->height;
 
     this->usingPBO = false;
     this->systemSurface = this->surface;
