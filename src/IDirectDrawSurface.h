@@ -57,7 +57,6 @@ struct IDirectDrawSurfaceImpl
 
     HANDLE syncEvent;
     HANDLE pSurfaceReady;
-    HANDLE pSurfaceDrawn;
 
     HGDIOBJ defaultBM;
     BOOL usingPBO;

@@ -414,8 +414,7 @@ setup_shaders:
     SetEvent(this->pSurfaceReady);
     // End OpenGL Setup
 
-
-    WaitForSingleObject(this->pSurfaceDrawn, INFINITE);
+    Sleep(500);
 
     if (failToGDI)
     {
