@@ -646,21 +646,7 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
     }
     else
     {
-        // FIXME: using black as magic transparency color
-        for (int y = 0; y < this->height; y++)
-        {
-            int ydst = this->width * y;
-
-            for (int x = 0; x < this->width; x++)
-            {
-                unsigned short px = this->overlay[x + ydst];
-                if (px)
-                {
-                    this->surface[x + ydst] = px;
-                }
-            }
-        }
-
+        StretchBlt(this->hDC, 0, 0, this->width, this->height, this->overlayDC, 0, 0, this->width, this->height, SRCPAINT);
         RECT rc = { 0, 0, this->width, this->height };
         FillRect(this->overlayDC, &rc, CreateSolidBrush(RGB(0,0,0)));
         LeaveCriticalSection(&this->lock);
