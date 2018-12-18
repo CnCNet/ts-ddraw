@@ -30,7 +30,47 @@ int FPS = 0;
 static HANDLE real_dll = NULL;
 static HRESULT (WINAPI *real_DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*) = NULL;
 #else
-BOOL WINAPI DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
+BOOL WINAPI DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+    switch (fdwReason)
+    {
+    case DLL_PROCESS_ATTACH:
+    {
+        BOOL setDpiAware = FALSE;
+        HMODULE hShcore = GetModuleHandle("shcore.dll");
+        typedef HRESULT (__stdcall* SetProcessDpiAwareness_)(PROCESS_DPI_AWARENESS value);
+        if(hShcore)
+        {
+            SetProcessDpiAwareness_ setProcessDpiAwareness =
+                (SetProcessDpiAwareness_)GetProcAddress(hShcore, "SetProcessDpiAwareness");
+
+            if (setProcessDpiAwareness)
+            {
+                HRESULT result = setProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+                setDpiAware = result == S_OK || result == E_ACCESSDENIED;
+            }
+        }
+        if (!setDpiAware)
+        {
+            HMODULE hUser32 = GetModuleHandle("user32.dll");
+            typedef BOOL (__stdcall* SetProcessDPIAware_)();
+            if(hUser32)
+            {
+                SetProcessDPIAware_ setProcessDPIAware =
+                    (SetProcessDPIAware_)GetProcAddress(hUser32, "SetProcessDPIAware");
+
+                if (setProcessDPIAware)
+                    setProcessDPIAware();
+            }
+        }
+        break;
+    }
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+
+    return TRUE;
+}
 #endif
 
 bool TSDDRAW = true;
