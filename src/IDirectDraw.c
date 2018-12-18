@@ -498,10 +498,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             this->pfd.nSize = sizeof(this->pfd);
             this->pfd.nVersion = 1;
 
-            if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
-                this->pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER|PFD_SWAP_EXCHANGE;
-            else
-                this->pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+            this->pfd.dwFlags = PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER|(InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL ? PFD_SUPPORT_OPENGL : 0);
             this->pfd.iPixelType = PFD_TYPE_RGBA;
             this->pfd.cColorBits = this->bpp;
             this->pfd.iLayerType = PFD_MAIN_PLANE;
@@ -517,28 +514,26 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
 
         int index = 0;
         DEVMODE dm;
+        DWORD maxFreq = 0;
         BOOL foundDevMode = false;
         while ( 0 != EnumDisplaySettings(NULL, index++, &dm))
         {
-            if ((dm.dmFields & (DM_PELSWIDTH|DM_PELSHEIGHT)) == (DM_PELSWIDTH|DM_PELSHEIGHT))
+            if ((dm.dmFields & (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY)) == (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY))
             {
-                if (this->mode.dmBitsPerPel != this->bpp)
+                if (dm.dmPelsWidth == this->width && dm.dmPelsHeight == this->height && dm.dmDisplayFrequency > maxFreq)
                 {
-                    if (dm.dmPelsWidth == this->render.width && dm.dmPelsHeight == this->render.height)
-                    {
-                        memcpy(&this->mode, &dm, sizeof(this->mode));
-                        foundDevMode = true;
-                    }
+                    maxFreq = dm.dmDisplayFrequency;
+                    foundDevMode = true;
+                    memcpy(&this->mode, &dm, sizeof(this->mode));
                 }
             }
         }
 
         if (!foundDevMode)
         {
-            this->mode.dmSize = sizeof(this->mode);
-            this->mode.dmFields = DM_PELSWIDTH|DM_PELSHEIGHT;
-            this->mode.dmPelsWidth = this->render.width;
-            this->mode.dmPelsHeight = this->render.height;
+            memcpy(&this->mode, &this->winMode, sizeof(this->mode));
+            this->render.width = this->screenWidth;
+            this->render.width = this->screenHeight;
         }
 
         // Only use the full screen hack in wine since it might disrupt OBS and recording software.
