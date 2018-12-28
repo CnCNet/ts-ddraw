@@ -518,9 +518,9 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         BOOL foundDevMode = false;
         while ( 0 != EnumDisplaySettings(NULL, index++, &dm))
         {
-            if ((dm.dmFields & (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY)) == (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY))
+            if ((dm.dmFields & (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY|DM_BITSPERPEL)) == (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY|DM_BITSPERPEL))
             {
-                if (dm.dmPelsWidth == this->width && dm.dmPelsHeight == this->height && dm.dmDisplayFrequency > maxFreq)
+                if (dm.dmPelsWidth == this->width && dm.dmPelsHeight == this->height && dm.dmDisplayFrequency > maxFreq && dm.dmBitsPerPel == 32)
                 {
                     maxFreq = dm.dmDisplayFrequency;
                     foundDevMode = true;
