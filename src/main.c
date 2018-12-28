@@ -96,6 +96,7 @@ bool ThreadSafe = false;
 bool ConvertOnGPU = true;
 DWORD SystemAffinity = 0;
 DWORD ProcAffinity = 0;
+bool GlFenceSync = false;
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter)
 {

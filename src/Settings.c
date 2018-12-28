@@ -72,6 +72,8 @@ void SettingsLoad()
     }
 
     MonitorEdgeTimer = GetInt("MonitorEdgeTimer", MonitorEdgeTimer);
+
+    GlFenceSync = GetBool("GlFenceSync", GlFenceSync);
 }
 
 static bool GetBool(LPCTSTR key, bool defaultValue)

@@ -115,11 +115,7 @@ IDirectDrawSurfaceImpl *IDirectDrawSurfaceImpl_construct(IDirectDrawImpl *lpDDIm
         dprintf("Starting renderer.\n");
         this->thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)render, (LPVOID)this, 0, NULL);
         SetThreadAffinityMask(this->thread, SystemAffinity);
-
-        if (SetThreadPriority(this->thread, THREAD_PRIORITY_ABOVE_NORMAL))
-        {
-            dprintf("Renderer set to higher priority.\n");
-        }
+        SetThreadPriorityBoost(this->thread, TRUE);
         WaitForSingleObject(this->pSurfaceReady, INFINITE);
     }
 
@@ -625,6 +621,9 @@ static HRESULT __stdcall _Lock(IDirectDrawSurfaceImpl *this, LPRECT lpDestRect, 
     return ret;
 }
 
+#define OVERLAY_TRANSPARENCY_RGB RGB(0,0,0)
+#define OVERLAY_TRANSPARENCY_WORD 0x0000
+
 HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
 {
     ENTER;
@@ -640,7 +639,7 @@ HRESULT __stdcall _ReleaseDC(IDirectDrawSurfaceImpl *this, HDC hDC)
     {
         StretchBlt(this->hDC, 0, 0, this->width, this->height, this->overlayDC, 0, 0, this->width, this->height, SRCPAINT);
         RECT rc = { 0, 0, this->width, this->height };
-        FillRect(this->overlayDC, &rc, CreateSolidBrush(RGB(0,0,0)));
+        FillRect(this->overlayDC, &rc, CreateSolidBrush(OVERLAY_TRANSPARENCY_RGB));
         LeaveCriticalSection(&this->lock);
     }
 

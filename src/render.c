@@ -114,12 +114,14 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
 
     // Begin OpenGL Setup
     bool failToGDI = false;
-    BOOL gotOpenglV3;
+    BOOL gotOpenglV3 = false;
     GLuint convProgram = 0;
     GLenum texFormat = GL_RGB, texType = GL_RGB, texInternal = GL_RG8;
     GLuint vao, vaoBuffers[3];
     GLint vertexCoordAttrLoc, texCoordAttrLoc;
+    GLsync sync_obj;
     float ScaleW = 1.0, ScaleH = 1.0;
+    double fpsFudge = 0.02;
 
     if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
     {
@@ -154,7 +156,7 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
             glCheckFramebufferStatus && glUniform4f && glActiveTexture && glUniform1i &&
             glGetAttribLocation && glGenBuffers && glBindBuffer && glBufferData && glVertexAttribPointer &&
             glEnableVertexAttribArray && glUniform2fv && glUniformMatrix4fv && glGenVertexArrays && glBindVertexArray &&
-            glGetUniformLocation && glversion && glversion[0] != '2';
+            glGetUniformLocation && glFenceSync && glClientWaitSync && glversion && glversion[0] != '2';
 
         if (gotOpenglV3)
         {
@@ -440,7 +442,7 @@ setup_shaders:
     LONG renderer = InterlockedExchangeAdd(&Renderer, 0);
     QPCounter renderCounter;
     double tick_time = 0.0;
-    TargetFrameLen = 1000.0 / TargetFPS;
+    TargetFrameLen = 1000.0 / (TargetFPS - fpsFudge);
     double startTargetFPS = TargetFPS;
 
     double avg_len = TargetFrameLen;
@@ -458,14 +460,6 @@ setup_shaders:
     bool hideWarning = true;
     double avg_fps = 0;
 
-    // Vsync calculator variables
-    double floor = 0;
-    double ceiling = TargetFrameLen + 1;
-    bool descending = true;
-    double sleep = TargetFrameLen;
-    double previous_best = TargetFrameLen * 2;
-    double best_sleep = 0;
-
     CounterStart(&renderCounter);
     CounterStart(&warningCounter);
 
@@ -474,7 +468,7 @@ setup_shaders:
         warningDuration = 10 * 1000.0; // 10 Seconds
         // Let's assume the worst here: this must be an old computer
         TargetFPS = 30.0;
-        TargetFrameLen = 1000.0 / TargetFPS;
+        TargetFrameLen = 1000.0 / (TargetFPS - fpsFudge);
     }
 
     while (this->thread)
@@ -617,7 +611,6 @@ setup_shaders:
                     glEnd();
                 }
 
-
                 SwapBuffers(this->dd->hDC);
 
                 if (GlFinish || SwapInterval > 0)
@@ -634,9 +627,30 @@ setup_shaders:
                         CounterStart(&warningCounter);
                         warningDuration = 10 * 1000.0;
                         TargetFPS = 30.0;
-                        TargetFrameLen = 1000.0 / TargetFPS;
+                        TargetFrameLen = 1000.0 / (TargetFPS - fpsFudge);
                         wglMakeCurrent(NULL, NULL);
                     }
+                }
+                if (gotOpenglV3 && GlFenceSync)
+                {
+                    sync_obj = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+
+                    switch (glClientWaitSync(sync_obj, 0, 16 * 1000 * 1000))
+                    {
+                    case GL_ALREADY_SIGNALED:
+                        //printf("GL_ALREADY_SIGNALED\n");
+                        break;
+                    case GL_TIMEOUT_EXPIRED:
+                        //printf("GL_TIMEOUTEXPIRED\n");
+                        break;
+                    case GL_CONDITION_SATISFIED:
+                        //printf("GL_CONDITION_SATISFIED\n");
+                        break;
+                    case GL_WAIT_FAILED:
+                        //printf("GL_WAIT_FAILED\n");
+                        break;
+                    }
+                    glDeleteSync(sync_obj);
                 }
                 break;
 
@@ -681,51 +695,19 @@ setup_shaders:
         if (startTargetFPS != TargetFPS)
         {
             // TargetFPS was changed externally
-            TargetFrameLen = 1000.0 / TargetFPS;
+            TargetFrameLen = 1000.0 / (TargetFPS - fpsFudge);
             startTargetFPS = TargetFPS;
         }
 
         tick_time = CounterGet(&renderCounter);
-        if (SwapInterval < 1)
+
+        if (tick_time < TargetFrameLen)
         {
-            if (tick_time < TargetFrameLen)
-            {
-                int sleep = (int)(TargetFrameLen - tick_time);
-                Sleep(sleep);
+            int sleep = (int)(TargetFrameLen - tick_time);
+            Sleep(sleep);
 
-                // Finish sub-millisecond sleep
-                while (CounterGet(&renderCounter) < TargetFrameLen);
-            }
-        }
-        else if (renderer == RENDERER_OPENGL)
-        {
-            // Calculate optimal sleep time for vsync mode.
-            if (bCount == FRAME_SAMPLES  && rIndex == FRAME_SAMPLES - 1)
-            {
-                if (avg_len < previous_best)
-                {
-                    previous_best = avg_len;
-                    best_sleep = sleep;
-                }
-                else
-                {
-                    descending = sleep > best_sleep;
-                    if (descending)
-                        ceiling = (ceiling + sleep) / 2;
-                    else
-                        floor = (floor - 0.5 + sleep) / 2;
-                }
-                if (descending)
-                    sleep = (sleep + floor)/2;
-                else
-                    sleep = ((ceiling - sleep)/2) + sleep;
-            }
-
-            if (sleep > TargetFrameLen || sleep < 1) sleep = TargetFrameLen;
-
-            CounterStart(&renderCounter);
-            Sleep((int)sleep);
-            while (CounterGet(&renderCounter) < sleep);
+            // Finish sub-millisecond sleep
+            while (CounterGet(&renderCounter) < TargetFrameLen);
         }
 
         if (InterlockedCompareExchange(&this->dd->focusGained, false, true))
@@ -734,6 +716,7 @@ setup_shaders:
             switch (InterlockedExchangeAdd(&Renderer, 0))
             {
             case RENDERER_OPENGL:
+                wglMakeCurrent(this->dd->hDC, this->dd->glInfo.hRC_render);
                 if (this->usingPBO)
                 {
                     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, this->pbo[this->pboIndex]);

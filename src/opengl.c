@@ -67,6 +67,10 @@ PFNGLDRAWBUFFERSPROC glDrawBuffers = NULL;
 PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus = NULL;
 PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers = NULL;
 
+PFNGLFENCESYNCPROC glFenceSync = NULL;
+PFNGLCLIENTWAITSYNCPROC glClientWaitSync = NULL;
+PFNGLDELETESYNCPROC glDeleteSync = NULL;
+
 PFNWGLSWAPINTERVALEXT wglSwapIntervalEXT = NULL;
 PFNWGLGETEXTENSIONSSTRINGARBPROC wglGetExtensionsStringARB = NULL;
 
@@ -132,6 +136,10 @@ void OpenGL_Init()
     glDrawBuffers = (PFNGLDRAWBUFFERSPROC)wglGetProcAddress("glDrawBuffers");
     glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)wglGetProcAddress("glCheckFramebufferStatus");
     glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)wglGetProcAddress("glDeleteFramebuffers");
+
+    glFenceSync = (PFNGLFENCESYNCPROC)wglGetProcAddress("glFenceSync");
+    glClientWaitSync = (PFNGLCLIENTWAITSYNCPROC)wglGetProcAddress("glClientWaitSync");
+    glDeleteSync = (PFNGLDELETESYNCPROC)wglGetProcAddress("glDeleteSync");
 
     wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXT)wglGetProcAddress("wglSwapIntervalEXT");
     wglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)wglGetProcAddress("wglGetExtensionsStringARB");
