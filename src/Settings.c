@@ -26,8 +26,8 @@ void SettingsLoad()
     GlFinish = GetBool("GlFinish", GlFinish);
     ConvertOnGPU = GetBool("ConvertOnGPU", true);
 
-    TargetFPS = (double)GetInt("TargetFPS", (int)TargetFPS);
-    TargetFrameLen = 1000.0 / TargetFPS;
+    TargetFPS = (double)GetInt("TargetFPS", 0);
+    TargetFrameLen = 16;
 
     if (GetBool("VSync", false))
         SwapInterval = 1;

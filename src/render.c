@@ -121,7 +121,6 @@ DWORD WINAPI render(IDirectDrawSurfaceImpl *this)
     GLint vertexCoordAttrLoc, texCoordAttrLoc;
     GLsync sync_obj;
     float ScaleW = 1.0, ScaleH = 1.0;
-    double fpsFudge = 0.02;
 
     if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL)
     {
@@ -426,22 +425,18 @@ setup_shaders:
         SendMessage(this->dd->hWnd, WM_ACTIVATE, WA_ACTIVE, 0);
     }
 
-    if (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL && SwapInterval > 0)
+    if (TargetFPS == 0.0 || (InterlockedExchangeAdd(&Renderer, 0) == RENDERER_OPENGL && SwapInterval > 0))
     {
-        DEVMODE lpDevMode;
-        memset(&lpDevMode, 0, sizeof(DEVMODE));
-        lpDevMode.dmSize = sizeof(DEVMODE);
-        lpDevMode.dmDriverExtra = 0;
-
-        if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &lpDevMode))
-        {
-            TargetFPS = (double)lpDevMode.dmDisplayFrequency;
-        }
+        if ( (this->dd->mode.dmFields & DM_DISPLAYFREQUENCY) )
+            TargetFPS = (double)this->dd->mode.dmDisplayFrequency;
+        else
+            TargetFPS = 60.0;
     }
 
     LONG renderer = InterlockedExchangeAdd(&Renderer, 0);
     QPCounter renderCounter;
     double tick_time = 0.0;
+    double fpsFudge = 0.02;
     TargetFrameLen = 1000.0 / (TargetFPS - fpsFudge);
     double startTargetFPS = TargetFPS;
 
