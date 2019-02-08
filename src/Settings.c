@@ -34,7 +34,8 @@ void SettingsLoad()
     else
         SwapInterval = 0;
 
-    InterlockedExchange(&PrimarySurfacePBO, GetInt("PrimarySurfacePBO", PrimarySurfacePBO));
+    // Disabled since this doesn't work with the OpenGL texture tests
+    //InterlockedExchange(&PrimarySurfacePBO, GetInt("PrimarySurfacePBO", PrimarySurfacePBO));
 
     char value[8] = {0};
     GetString("SingleProcAffinity", "", value, 8);

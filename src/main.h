@@ -52,6 +52,8 @@ void DebugPrint(const char *format, ...);
 BOOL IsWindowsXp();
 BOOL IsWine();
 
+DWORD NvOptimusEnablement;
+DWORD AmdPowerXpressRequestHighPerformance;
 bool GameHandlesClose;
 int DrawFPS;
 double TargetFPS;

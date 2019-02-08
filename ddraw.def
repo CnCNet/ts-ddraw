@@ -12,3 +12,5 @@ EXPORTS
     StretchToWidth              DATA
     StretchToHeight             DATA
     ThreadSafe                  DATA
+    NvOptimusEnablement         DATA
+    AmdPowerXpressRequestHighPerformance DATA

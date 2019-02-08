@@ -75,6 +75,8 @@ BOOL WINAPI DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes
 
 bool TSDDRAW = true;
 bool GameHandlesClose = false;
+DWORD NvOptimusEnablement = 1;
+DWORD AmdPowerXpressRequestHighPerformance = 1;
 bool SingleProcAffinity = true;
 
 #ifdef _DEBUG
