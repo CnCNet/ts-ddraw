@@ -6,6 +6,7 @@
 
 static bool GetBool(LPCTSTR key, bool defaultValue);
 LONG GetRenderer(LPCSTR key, char *defaultValue, bool *autoRenderer);
+LONG GetFixedOutput(LPCSTR key, char *defaultValue);
 #define GetInt(a,b) GetPrivateProfileInt(SettingsSection,a,b,SettingsPath)
 #define GetString(a,b,c,d) GetPrivateProfileString(SettingsSection,a,b,c,d,SettingsPath)
 
@@ -75,6 +76,8 @@ void SettingsLoad()
     MonitorEdgeTimer = GetInt("MonitorEdgeTimer", MonitorEdgeTimer);
 
     GlFenceSync = GetBool("GlFenceSync", GlFenceSync);
+
+    FixedOutput = GetFixedOutput("FixedOutput", "default");
 }
 
 static bool GetBool(LPCTSTR key, bool defaultValue)
@@ -110,4 +113,24 @@ LONG GetRenderer(LPCSTR key, char *defaultValue, bool *autoRenderer)
             return RENDERER_OPENGL;
     }
     return RENDERER_GDI;
+}
+
+LONG GetFixedOutput(LPCSTR key, char *defaultValue)
+{
+    char value[256];
+    GetString(key, defaultValue, value, 256);
+
+    if (_strcmpi(value, "default") == 0)
+    {
+        return DMDFO_DEFAULT;
+    }
+    else if (_strcmpi(value, "center") == 0)
+    {
+        return DMDFO_CENTER;
+    }
+    else if (_strcmpi(value, "stretch") == 0)
+    {
+        return DMDFO_STRETCH;
+    }
+    return DMDFO_DEFAULT;
 }

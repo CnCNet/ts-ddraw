@@ -515,17 +515,60 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         int index = 0;
         DEVMODE dm;
         DWORD maxFreq = 0;
+        int bestDM = 0;
         BOOL foundDevMode = false;
         while ( 0 != EnumDisplaySettings(NULL, index++, &dm))
         {
             if ((dm.dmFields & (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY|DM_BITSPERPEL)) == (DM_PELSWIDTH|DM_PELSHEIGHT|DM_DISPLAYFREQUENCY|DM_BITSPERPEL))
             {
-                if (dm.dmPelsWidth == this->width && dm.dmPelsHeight == this->height && dm.dmDisplayFrequency > maxFreq && dm.dmBitsPerPel == 32)
+                if (dm.dmPelsWidth == this->width && dm.dmPelsHeight == this->height
+                    && dm.dmDisplayFrequency > maxFreq && dm.dmBitsPerPel == 32)
                 {
-                    maxFreq = dm.dmDisplayFrequency;
-                    foundDevMode = true;
-                    memcpy(&this->mode, &dm, sizeof(this->mode));
+                    if ((dm.dmFields & DM_DISPLAYFIXEDOUTPUT) && dm.dmDisplayFixedOutput == FixedOutput)
+                    {
+                        maxFreq = dm.dmDisplayFrequency;
+                        foundDevMode = true;
+                        bestDM = index;
+                        memcpy(&this->mode, &dm, sizeof(this->mode));
+                    }
+                    else if (FixedOutput == DMDFO_DEFAULT)
+                    {
+                        maxFreq = dm.dmDisplayFrequency;
+                        foundDevMode = true;
+                        bestDM = index;
+                        memcpy(&this->mode, &dm, sizeof(this->mode));
+                    }
                 }
+            }
+        }
+
+#ifndef TRACE
+        (void)bestDM;
+#endif
+
+        index = 0;
+        while ( 0 != EnumDisplaySettings(NULL, index++, &dm))
+        {
+            if (dm.dmFields & DM_DISPLAYFIXEDOUTPUT)
+            {
+                switch (dm.dmDisplayFixedOutput)
+                {
+                case DMDFO_DEFAULT:
+                    dprintf("        %dx%d-%d %dhz DMDFO_DEFAULT %s\n", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency, bestDM == index ? "*Selected*" : "");
+                    break;
+                case DMDFO_CENTER:
+                    dprintf("        %dx%d-%d %dhz DMDFO_CENTER %s\n", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency, bestDM == index ? "*Selected*" : "");
+                    break;
+                case DMDFO_STRETCH:
+                    dprintf("        %dx%d-%d %dhz DMDFO_STRETCH %s\n", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency, bestDM == index ? "*Selected*" : "");
+                    break;
+                default:
+                    break;
+                }
+            }
+            else
+            {
+                dprintf("        %dx%d-%d %dhz               %s\n", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency, bestDM == index ? "*Selected*" : "");
             }
         }
 
