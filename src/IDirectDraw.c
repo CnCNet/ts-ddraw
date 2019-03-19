@@ -542,9 +542,7 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
             }
         }
 
-#ifndef TRACE
         (void)bestDM;
-#endif
 
         index = 0;
         while ( 0 != EnumDisplaySettings(NULL, index++, &dm))
@@ -575,8 +573,10 @@ static HRESULT __stdcall _SetDisplayMode(IDirectDrawImpl *this, DWORD width, DWO
         if (!foundDevMode)
         {
             memcpy(&this->mode, &this->winMode, sizeof(this->mode));
-            this->render.width = this->screenWidth;
-            this->render.width = this->screenHeight;
+            this->render.width = this->mode.dmPelsWidth;
+            this->render.height = this->mode.dmPelsHeight;
+            this->width = this->mode.dmPelsWidth;
+            this->height = this->mode.dmPelsHeight;
         }
 
         // Only use the full screen hack in wine since it might disrupt OBS and recording software.
