@@ -77,7 +77,7 @@ void SettingsLoad()
 
     GlFenceSync = GetBool("GlFenceSync", GlFenceSync);
 
-    FixedOutput = GetFixedOutput("FixedOutput", "default");
+    FixedOutput = GetFixedOutput("FixedOutput", "stretch");
 }
 
 static bool GetBool(LPCTSTR key, bool defaultValue)
