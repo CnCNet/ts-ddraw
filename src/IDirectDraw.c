@@ -311,7 +311,7 @@ static HRESULT __stdcall _GetCaps(IDirectDrawImpl *this, LPDDCAPS lpDDDriverCaps
 static HRESULT __stdcall _GetDisplayMode(IDirectDrawImpl *this, LPDDSURFACEDESC lpDDSurfaceDesc)
 {
     dprintf("--> IDirectDraw::GetDisplayMode(this=%p, lpDDSurfaceDesc=%p)\n", this, lpDDSurfaceDesc);
-    HRESULT ret = IDirectDraw_GetDisplayMode(this->real, lpDDSurfaceDesc);
+    HRESULT ret = DDERR_UNSUPPORTED; // IDirectDraw_GetDisplayMode(this->real, lpDDSurfaceDesc);
     dprintf("<-- IDirectDraw::GetDisplayMode(this=%p, lpDDSurfaceDesc=%p) -> %08X\n", this, lpDDSurfaceDesc, (int)ret);
     return ret;
 }
