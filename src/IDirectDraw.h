@@ -88,6 +88,7 @@ struct IDirectDrawImpl
     int width;
     int height;
     int bpp;
+    BOOL pixelFormatSet;
 
     PIXELFORMATDESCRIPTOR pfd;
 
