@@ -190,28 +190,67 @@ static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags,
     }
     else
     {
-        DEVMODE mode;
-        mode.dmSize = sizeof(mode);
+        //set up some filters to keep the list short
+        DWORD refreshRate = 0;
+        DWORD bpp = 0;
+        DWORD flags = 99998;
+        DWORD fixedOutput = 99998;
+        DWORD i = 0;
+        DDSURFACEDESC s;
+        DEVMODE m;
+        memset(&m, 0, sizeof(DEVMODE));
+        m.dmSize = sizeof(DEVMODE);
 
-        int i = 0;
-        while (EnumDisplaySettings(NULL, i, &mode))
+        while (EnumDisplaySettings(NULL, i, &m))
         {
-            // enumerate desktop bpp modes
-            if (mode.dmBitsPerPel == this->winMode.dmBitsPerPel)
-            {
-                DDSURFACEDESC desc;
-                memset(&desc, 0, sizeof(desc));
-                desc.dwSize = sizeof(desc);
-                desc.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_REFRESHRATE|DDSD_PIXELFORMAT;
-                desc.dwWidth = mode.dmPelsWidth;
-                desc.dwHeight = mode.dmPelsHeight;
-                desc.dwRefreshRate = mode.dmDisplayFrequency;
-                desc.ddpfPixelFormat.dwSize = sizeof(desc.ddpfPixelFormat);
-                desc.ddpfPixelFormat.dwFlags = DDPF_RGB;
-                desc.ddpfPixelFormat.dwRGBBitCount = this->bpp;
+            if (refreshRate != 60 && m.dmDisplayFrequency >= 50)
+                refreshRate = m.dmDisplayFrequency;
 
-                lpEnumModesCallback(&desc, lpContext);
+            if (bpp != 32 && m.dmBitsPerPel >= 16)
+                bpp = m.dmBitsPerPel;
+
+            if (flags != 0)
+                flags = m.dmDisplayFlags;
+
+            if (fixedOutput != DMDFO_DEFAULT)
+                fixedOutput = m.dmDisplayFixedOutput;
+
+            memset(&m, 0, sizeof(DEVMODE));
+            m.dmSize = sizeof(DEVMODE);
+            i++;
+        }
+
+        memset(&m, 0, sizeof(DEVMODE));
+        m.dmSize = sizeof(DEVMODE);
+        i = 0;
+        while (EnumDisplaySettings(NULL, i, &m))
+        {
+            if (refreshRate == m.dmDisplayFrequency &&
+                bpp == m.dmBitsPerPel &&
+                flags == m.dmDisplayFlags &&
+                fixedOutput == m.dmDisplayFixedOutput)
+            {
+                memset(&s, 0, sizeof(DDSURFACEDESC));
+                s.dwSize = sizeof(DDSURFACEDESC);
+                s.dwFlags = DDSD_HEIGHT | DDSD_REFRESHRATE | DDSD_WIDTH | DDSD_PIXELFORMAT;
+                s.dwHeight = m.dmPelsHeight;
+                s.dwWidth = m.dmPelsWidth;
+                s.dwRefreshRate = 60;
+                s.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
+                s.ddpfPixelFormat.dwFlags = DDPF_RGB;
+                s.ddpfPixelFormat.dwRGBBitCount = 16;
+                s.ddpfPixelFormat.dwRBitMask = 0xF800;
+                s.ddpfPixelFormat.dwGBitMask = 0x07E0;
+                s.ddpfPixelFormat.dwBBitMask = 0x001F;
+
+                if (lpEnumModesCallback(&s, lpContext) == DDENUMRET_CANCEL)
+                {
+                    printf("    DDENUMRET_CANCEL returned, stopping\n");
+                    break;
+                }
             }
+            memset(&m, 0, sizeof(DEVMODE));
+            m.dmSize = sizeof(DEVMODE);
             i++;
         }
     }
