@@ -245,7 +245,7 @@ static HRESULT __stdcall _EnumDisplayModes(IDirectDrawImpl *this, DWORD dwFlags,
 
                 if (lpEnumModesCallback(&s, lpContext) == DDENUMRET_CANCEL)
                 {
-                    printf("    DDENUMRET_CANCEL returned, stopping\n");
+                    dprintf("    DDENUMRET_CANCEL returned, stopping\n");
                     break;
                 }
             }
